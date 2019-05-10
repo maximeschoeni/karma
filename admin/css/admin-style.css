@@ -1,0 +1,38 @@
+.column-ev_date {
+	width: 150px;
+}
+textarea.full-width,
+input.full-width {
+	width: 100%;
+	box-sizing: border-box;
+}
+
+table.karma {
+	width: 100%;
+}
+
+table.karma td {
+	width: 99%;
+}
+th {
+	min-width: 180px;
+	text-align: left;
+}
+
+#postexcerpt table.karma td {
+	padding: 5px 0;
+}
+
+table.karma input:disabled+label{
+	color:#ccc;
+}
+
+table.wp-list-table .manage-column.column-locations,
+table.wp-list-table .manage-column.column-headline,
+table.wp-list-table .manage-column.column-annee {
+	width: 15%;
+}
+
+#pageparentdiv .inside p:last-child {
+	display: none;
+}

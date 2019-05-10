@@ -1,0 +1,1 @@
+<textarea id="karma-subtitle" class="full-width" name="excerpt" placeholder="<?php echo $this->get_default_field_value('Sous-titre', $post, 'post_excerpt'); ?>" style="font-size: 1.7em;margin-top: 20px;height: 100px;"><?php echo $post->post_excerpt; ?></textarea>

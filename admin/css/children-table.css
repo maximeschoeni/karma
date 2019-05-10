@@ -1,0 +1,19 @@
+table.children-table {
+	table-layout: auto;
+}
+
+
+table.children-table tr {
+}
+table.children-table tr td,
+table.children-table tr th {
+
+	min-width: 0;
+}
+table.children-table input {
+	width: 100%;
+	box-sizing: border-box;
+}
+button.children-table-add-child {
+	margin-top: 10px !important;
+}
