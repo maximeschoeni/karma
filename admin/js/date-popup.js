@@ -89,7 +89,6 @@ function createDatePopupManager(input) {
   					})),
   					rows.map(function(row) {
   						return build("ul.calendar-days-content", row.map(function(day) {
-                console.log(manager);
   							var isActive = manager.sqlDate && day.sqlDate.slice(0, 10) === manager.sqlDate.slice(0, 10);
   							return build("li"+(isActive ? ".active" : "")+(day.isOffset ? ".offset" : "")+(day.isToday ? ".today" : "")+(day.isWeekend ? ".weekend" : ""),
   								build("span", Calendar.format(day.date, "#d")),

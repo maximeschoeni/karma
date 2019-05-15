@@ -1,5 +1,6 @@
 <?php
 
+// test
 
 class Karma {
 
@@ -20,6 +21,8 @@ class Karma {
 		add_filter('sanitize_file_name', array($this, 'sanitize_file_name'), 11);
 
 		// add_action('init', array($this, 'register'));
+
+
 
 		require_once get_template_directory() . '/admin/date.php';
 
