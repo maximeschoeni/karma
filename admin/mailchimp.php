@@ -67,8 +67,8 @@ class Karma_Mailchimp {
 	 */
 	public function subscribe_mailchimp($email, $args) {
 
-		$api_key = $this->get_option('mailchimp_key'); //'9b439382b8a68b0ff00e9105e0a0f43c-us15';
-		$list_id = $this->get_option('mailchimp_id'); //'4ccc2b3849';
+		$api_key = $this->get_option('mailchimp_key');
+		$list_id = $this->get_option('mailchimp_id');
 
 		$member_id = md5(strtolower($email));
 		$data_center = substr($api_key,strpos($api_key,'-')+1);
