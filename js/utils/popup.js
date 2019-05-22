@@ -5,35 +5,36 @@
 function createPopupManager() {
 	var current;
 	var manager = {
+		current: null,
 		duration: 300,
 		easing: "easeInOutSine",
 		sequential: false,
 		update: function(element, noAnim, toggle) {
 			if (this.sequential) {
-				if (current) {
-					close(current, noAnim, function() {
+				if (this.current) {
+					close(manager.current, noAnim, function() {
 						if (element) {
 							open(element, noAnim);
 						}
-						current = element;
+						manager.current = element;
 					});
 				} else if (element) {
 					open(element, noAnim);
-					current = element;
+					manager.current = element;
 				}
 			} else {
-				if (toggle && current && element === current) {
-					close(current, noAnim);
+				if (toggle && this.current && element === this.current) {
+					//close(current, noAnim);
 					element = null;
-					current = null;
+					//current = null;
 				}
-				if (current && element !== current) {
-					close(current, noAnim);
-					current = null;
+				if (this.current && element !== this.current) {
+					close(this.current, noAnim);
+					this.current = null;
 				}
-				if (element && !current) {
+				if (element && !this.current) {
 					open(element, noAnim);
-					current = element;
+					this.current = element;
 				}
 			}
 		},

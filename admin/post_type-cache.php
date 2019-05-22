@@ -5,6 +5,7 @@
  */
 class Karma_Post_type_Cache {
 
+	public $post_type;
 	/**
 	 *	Constructor
 	 */
@@ -22,6 +23,26 @@ class Karma_Post_type_Cache {
 
 		}
 
+	}
+
+	/**
+	 * Get page link to fetch json
+	 */
+	public function get_json_link($post_id) {
+		global $wp_object_cache, $sublanguage;
+
+		if (isset($wp_object_cache->cache_dir) && is_file(WP_CONTENT_DIR . '/' . $wp_object_cache->cache_dir . '/' . $wp_object_cache->object_dir . '/' . $this->post_type . '/' . $post_id . apply_filters('karma_append_language_to_path', '') . '/data.json')) {
+
+			return WP_CONTENT_URL . '/' . $wp_object_cache->cache_dir . '/' . $wp_object_cache->object_dir . '/' . $this->post_type . '/' . $post_id . apply_filters('karma_append_language_to_path', '') . '/data.json';
+
+		} else {
+
+			return add_query_arg(array(
+				'action' => 'get_'.$this->post_type,
+				'id' => $post_id
+			), admin_url('admin-ajax.php'));
+
+		}
 
 	}
 
@@ -61,7 +82,7 @@ class Karma_Post_type_Cache {
 
 		if ($group === $this->post_type) {
 
-			$path = $object_cache->object_dir . '/' . $group . '/' . $key . apply_filters('append_language_to_path', '');
+			$path = $object_cache->object_dir . '/' . $group . '/' . $key . apply_filters('karma_append_language_to_path', '');
 
 			$object_cache->write_file($path, 'data.json', json_encode($data, JSON_PRETTY_PRINT));
 

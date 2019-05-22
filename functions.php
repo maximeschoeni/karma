@@ -91,14 +91,14 @@ class Karma {
 
 		wp_register_script('tinyAnimate', get_template_directory_uri() . '/js/utils/TinyAnimate.js', array(), $this->version, true);
 		wp_register_script('swipe', get_template_directory_uri() . '/js/utils/swipe.js', array(), $this->version, true);
-		wp_register_script('media-player', get_template_directory_uri() . '/js/utils/media-player.js', array('tinyAnimate'), $this->version, true);
+		wp_register_script('collection', get_template_directory_uri() . '/js/utils/collection.js', array(), $this->version, true);
+		wp_register_script('media-player', get_template_directory_uri() . '/js/utils/media-player.js', array('tinyAnimate', 'collection'), $this->version, true);
 		wp_register_script('build', get_template_directory_uri() . '/js/utils/build.js', array(), $this->version, true);
 		wp_register_script('ajax', get_template_directory_uri() . '/js/utils/ajax.js', array(), $this->version, true);
 		wp_register_script('marquee', get_template_directory_uri() . '/js/utils/marquee.js', array(), $this->version, true);
 		wp_register_script('popup', get_template_directory_uri() . '/js/utils/popup.js', array('tinyAnimate'), $this->version, true);
 		wp_register_script('calendar', get_template_directory_uri() . '/js/utils/calendar.js', array(), $this->version, true);
-
-
+		wp_register_script('translation', get_template_directory_uri() . '/js/utils/translation.js', array(), $this->version, true);
 		wp_register_script('grid-system', get_template_directory_uri() . '/js/utils/grid-system.js', array('tinyAnimate'), $this->version, true);
 		wp_register_script('sticky', get_template_directory_uri() . '/js/utils/sticky.js', array(), $this->version, true);
 // 		wp_enqueue_script('grid', get_template_directory_uri() . '/js/grid.js', array('grid-system'), $this->version, true);

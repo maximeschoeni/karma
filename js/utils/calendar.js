@@ -89,6 +89,7 @@ var Calendar = {
 			format = format.replace("%day%", Calendar.weekdays3[date.getDay()]);
 			format = format.replace("%d2%", Calendar.weekdays2[date.getDay()]);
 			format = format.replace("%d%", Calendar.weekdays1[date.getDay()]);
+			format = format.replace("%y2%", this.zeroize(date.getFullYear(), 2));
 			return format;
 		}
 		return "";
@@ -105,15 +106,19 @@ var Calendar = {
 			.replace("ss", "([0-9]{2})")
 			.replace("#m", "([0-9]+)")
 			.replace("#d", "([0-9]+)")
+			.replace("%y2%", "([0-9]{2})")
 			.replace("%fullmonth%", "("+Calendar.months3.join("|")+")")
 			.replace("%mon%", "("+Calendar.months3.join("|")+")");
 		var results = dateString.match(new RegExp("^"+reg+"$"));
-		var items = format.match(/(yyyy|mm|dd|hh|ii|ss|#m|#d|%fullmonth%|%mon%)/g);
+		var items = format.match(/(yyyy|mm|dd|hh|ii|ss|#m|#d|%y2%|%fullmonth%|%mon%)/g);
 		if (results && items) {
 			for (var i = 1; i < results.length; i++) {
 				switch (items[i-1]) {
 					case "yyyy":
 						date.setFullYear(parseInt(results[i]));
+						break;
+					case "%y2%":
+						date.setFullYear(parseInt("20"+results[i]));
 						break;
 					case "mm":
 					case "#m":

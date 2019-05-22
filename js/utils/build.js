@@ -3,7 +3,7 @@
  */
 function build(tag) {
 	var classes = tag.split(".");
-	element = document.createElement(classes[0]);
+	var element = document.createElement(classes[0]);
 	if (classes.length > 1) {
 		element.className = classes.slice(1).join(" ");
 	}
@@ -18,7 +18,7 @@ function build(tag) {
 			element.appendChild(arguments[i]);
 		} else if (arguments[i]) {
 			element.innerHTML = arguments[i].toString();
-		} 
+		}
 	}
 	return element;
 }

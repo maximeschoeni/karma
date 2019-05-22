@@ -1,14 +1,16 @@
 <?php
 
+require_once get_template_directory() . '/admin/post_type-cache.php';
+
 /**
  *	Class Karma_Subevent
  */
-class Karma_Subevent {
+class Karma_Subevent extends Karma_Post_type_Cache {
 
 	public $version = '000';
 
-	public $sub_type = 'event';
-	public $sub_type_name = array();
+	public $subevent_post_type = 'event';
+	public $subevent_post_type_name = 'Date';
 	public $post_type = 'project';
 	public $fields = array();
 
@@ -18,12 +20,7 @@ class Karma_Subevent {
 	/**
 	 *	Constructor
 	 */
-	public function __construct($post_type, $sub_type, $sub_type_name, $fields) {
-
-		$this->post_type = $post_type;
-		$this->sub_type = $sub_type;
-		$this->sub_type_name = $sub_type_name;
-		$this->fields = $fields;
+	public function __construct() {
 
 		if (is_admin()) {
 
@@ -36,7 +33,20 @@ class Karma_Subevent {
 		add_action('init', array($this, 'register_taxonomy'));
 	}
 
+	/**
+	 *	Constructor
+	 */
+	public function init_cache() {
 
+		parent::init_cache();
+
+		if (isset($this->subevent_post_type)) {
+
+			add_action('save_post_'.$this->subevent_post_type, array($this, 'save_subevent'), 99, 2);
+
+		}
+
+	}
 
 	/**
 	 * Hook for 'admin_enqueue_scripts'
@@ -53,9 +63,9 @@ class Karma_Subevent {
 	 */
 	public function register_taxonomy() {
 
-		register_post_type($this->sub_type, array(
+		register_post_type($this->subevent_post_type, array(
 			'labels'             => array(
-				'name' => $this->sub_type_name,
+				'name' => $this->subevent_post_type_name,
 			),
 			'public'             => true,
 			'publicly_queryable' => true,
@@ -74,7 +84,7 @@ class Karma_Subevent {
 
 			if ($field['type'] === 'taxonomy') {
 
-				register_taxonomy($field['taxonomy'], array($this->sub_type), array(
+				register_taxonomy($field['taxonomy'], array($this->subevent_post_type), array(
 					'hierarchical'          => true,
 					'labels'                => array(
 						'name'                       => 'Types',
@@ -116,6 +126,14 @@ class Karma_Subevent {
 
 		wp_nonce_field($this->action, $this->nonce, false, true);
 
+		// $subevent_ids = $wpdb->get_col($wpdb->prepare(
+		// 	"SELECT p.ID FROM $wpdb->posts AS p
+		// 	JOIN $wpdb->postmeta AS pm ON (pm.post_id = p.ID AND pm.meta_key = 'end_date')
+		// 	WHERE p.post_type = %s AND p.post_status = %s AND p.post_parent = %d
+		// 	GROUP BY p.ID
+		// 	ORDER BY pm.meta_value ASC",
+		// 	$this->subevent_post_type, 'publish', $post->ID));
+
 		$types = array();
 
 		foreach ($this->fields as $field) {
@@ -134,7 +152,65 @@ class Karma_Subevent {
 
 		}
 
-		$subevents = $this->get_subevents($post->ID);
+		$subevents = $this->export_subevents($post->ID);
+
+		// $events = array();
+		//
+		// foreach ($event_ids as $event_id) {
+		// 	$event = array(
+		// 		'id' => $event_id,
+		// 		'start_date' => get_post_meta($event_id, 'start_date', true),
+		// 		// 'hour' => get_post_meta($event_id, 'hour', true),
+		// 		// 'name' => get_post_meta($event_id, 'name', true),
+		// 		// 'place' => get_post_meta($event_id, 'place', true),
+		// 		// 'city' => get_post_meta($event_id, 'city', true),
+		// 		// 'country' => get_post_meta($event_id, 'country', true),
+		// 	);
+		//
+		// 	$post_event = get_post($event_id);
+		//
+		// 	foreach ($this->fields as $field) {
+		//
+		// 		if ($field['type'] === 'post_field') {
+		//
+		// 			$event[$field['name']] = $post_event->{$field['post_field']};
+		//
+		// 		} else if ($field['type'] === 'meta') {
+		//
+		// 			$event[$field['name']] = get_post_meta($event_id, $field['name'], true);
+		//
+		// 		} else if ($field['type'] === 'taxonomy') {
+		//
+		// 			$terms = get_the_terms($post_event, $field['taxonomy']);
+		//
+		// 			if ($terms && !is_wp_error($terms)) {
+		//
+		// 				foreach ($terms as $term) {
+		//
+		// 					$event[$field['name']] = $term->term_id;
+		// 					break;
+		//
+		// 				}
+		//
+		// 			}
+		//
+		// 		}
+		//
+		// 	}
+		//
+		// 	$events[] = $event;
+		//
+		//
+		// 	// $events[] = array(
+		// 	// 	'id' => $event_id,
+		// 	// 	'start_date' => get_post_meta($event_id, 'start_date', true),
+		// 	// 	'hour' => get_post_meta($event_id, 'hour', true),
+		// 	// 	'name' => get_post_meta($event_id, 'name', true),
+		// 	// 	'place' => get_post_meta($event_id, 'place', true),
+		// 	// 	'city' => get_post_meta($event_id, 'city', true),
+		// 	// 	'country' => get_post_meta($event_id, 'country', true),
+		// 	// );
+		// }
 
 		include get_template_directory() . '/admin/include/utils/metabox-subevent.php';
 
@@ -169,7 +245,13 @@ class Karma_Subevent {
 
 					}
 
+					// echo '<pre>';
+					// var_dump($_POST);
+					// die();
+					// add/update events
 					foreach ($_POST['subevent']['event_id'] as $i => $event_id) {
+
+
 
 						if (!isset($_POST['subevent']['start_date'][$i])) {
 
@@ -180,15 +262,22 @@ class Karma_Subevent {
 						$start_date = Karma_Date::parse($_POST['subevent']['start_date'][$i], 'dd.mm.yyyy', 'yyyy-mm-dd hh:ii:ss');
 
 						$post_fields = array(
-							'post_type' => $this->sub_type,
+							'post_type' => $this->subevent_post_type,
 							'post_status' => 'publish',
 							'post_parent' => $post_id,
 							// 'post_title' => $post->post_title . ' ' . $_POST['start_date'][$i],
 							'meta_input' => array(
 								'start_date' => $start_date,
 								'end_date' => $start_date,
+								// 'hour' => $_POST['hour'][$i],
+								// 'name' => $_POST['name'][$i],
+								// 'place' => $_POST['place'][$i],
+								// 'city' => $_POST['city'][$i],
+								// 'country' => $_POST['country'][$i]
 							)
 						);
+
+
 
 						foreach ($this->fields as $field) {
 
@@ -235,7 +324,7 @@ class Karma_Subevent {
 	/**
 	 * export children
 	 */
-	public function get_subevents($post_id) {
+	public function export_subevents($post_id) {
 		global $wpdb;
 
 		$children_ids = $wpdb->get_col($wpdb->prepare(
@@ -244,7 +333,7 @@ class Karma_Subevent {
 			WHERE p.post_type = %s AND p.post_status = %s AND p.post_parent = %d
 			GROUP BY p.ID
 			ORDER BY pm.meta_value ASC",
-			$this->sub_type, 'publish', $post_id));
+			$this->subevent_post_type, 'publish', $post_id));
 
 		$subevents = array();
 
@@ -294,6 +383,82 @@ class Karma_Subevent {
 		return $subevents;
 	}
 
+	/**
+	 * get event
+	 */
+	public function export($post_id) {
+		global $wpdb;
+
+		$post = get_post($post_id);
+
+		$event = array(
+			'id' => $post->ID,
+			'name' => $post->post_name,
+			'title' => apply_filters('sublanguage_translate_post_field', $post->post_title, $post, 'post_title'),
+			'content' => apply_filters('the_content', apply_filters('sublanguage_translate_post_field', $post->post_content, $post, 'post_content')),
+			'subtitle' => nl2br(get_post_meta($post->ID, 'subtitle', true)),
+			'images' => $this->get_images_data(get_post_meta($post->ID, 'images')),
+			'subevents' => $this->export_subevents($post_id)
+		);
+
+		// $children_ids = $wpdb->get_col($wpdb->prepare(
+		// 	"SELECT ID FROM $wpdb->posts
+		// 	WHERE post_parent = %d AND post_type = %s AND post_status = 'publish'",
+		// 	$post_id, $this->subevent_post_type
+		// ));
+		//
+		// foreach ($children_ids as $children_id) {
+		//
+		// 	$subevent = array();
+		// 	$child_post = get_post($children_id);
+		//
+		// 	foreach ($this->fields as $field) {
+		//
+		// 		if ($field['type'] === 'post_field') {
+		//
+		// 			$subevent[$field['name']] = $child_post->{$field['post_field']};
+		//
+		// 		} else if ($field['type'] === 'meta') {
+		//
+		// 			$subevent[$field['name']] = get_post_meta($children_id, $field['name'], true);
+		//
+		// 		} else if ($field['type'] === 'taxonomy') {
+		//
+		// 			$terms = get_the_terms($child_post, $field['taxonomy']);
+		//
+		// 			if ($terms && !is_wp_error($terms)) {
+		//
+		// 				foreach ($terms as $term) {
+		//
+		// 					$subevent[$field['name']][] = $term->term_id;
+		//
+		// 				}
+		//
+		// 			}
+		//
+		// 		}
+		//
+		// 	}
+		//
+		// 	$event['subevents'][] = $subevent;
+		// }
+
+		return $event;
+	}
+
+
+	/**
+	 * @hook 'save_post_{$post_type}'
+	 */
+	public function save_subevent($post_id, $post) {
+
+		if ($post->post_parent) {
+
+			$this->update($post->post_parent);
+
+		}
+
+	}
 
 
 	// public function get_images_data($attachement_ids) {

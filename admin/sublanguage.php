@@ -17,7 +17,7 @@ class Karma_Sublanguage {
 
 		}
 
-		add_filter('karma_append_language_to_url', array($this, 'append_language_to_url'));
+		add_filter('karma_append_language_to_path', array($this, 'append_language_to_path'));
 
 	}
 
@@ -75,3 +75,5 @@ class Karma_Sublanguage {
 	}
 
 }
+
+new Karma_Sublanguage;
