@@ -95,7 +95,7 @@ function buildChildrenTable(manager) {
 				manager.fields.map(function(field) {
 					if (field.type === 'taxonomy') {
 						return build("td.child-cell",
-							buildSelector("subevent["+field.name+"][]", manager.types[field.name], item[field.name].length && item[field.name][0], function() {
+							buildSelector("subevent["+field.name+"][]", manager.types[field.name], item[field.name] && item[field.name].length && item[field.name][0], function() {
 								item[field.name] = this.value;
 							})
 						);

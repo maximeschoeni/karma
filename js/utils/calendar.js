@@ -3,7 +3,7 @@
  */
 var Calendar = {
 	months: ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"],
-	months3: ["jan", "fev", "mar", "avr", "mai", "juin", "juillet", "août", "sept", "oct", "nov", "dec"],
+	months3: ["jan", "fev", "mar", "avr", "mai", "jun", "jui", "aoû", "sept", "oct", "nov", "dec"],
 	weekdays: ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"],
 	weekdays1: ["d", "l", "m", "m", "j", "v", "s"],
 	weekdays2: ["di", "lu", "ma", "me", "je", "ve", "sa"],

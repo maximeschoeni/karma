@@ -89,7 +89,7 @@ function createCollection(items) {
 				return this.items[index];
 			}
 		},
-		getAdjacents: function(max, item) {
+		getAdjacents: function(item, max) {
 			var collection = createCollection();
 			for (var i = 1; i <= max; i++) {
 				var prev = this.getAdjacent(item, -i);
