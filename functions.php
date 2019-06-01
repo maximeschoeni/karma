@@ -114,7 +114,7 @@ class Karma {
 		// wp_enqueue_script('agenda', get_template_directory_uri() . '/js/agenda.js', array('popup', 'ajax', 'build', 'calendar', 'grid-slideshow'), $this->version, true);
 		// wp_enqueue_script('intro', get_template_directory_uri() . '/js/intro.js', array('media-player'), $this->version, true);
 
-		wp_register_script('cookies', get_template_directory_uri() . '/js/utils/cookies.js', array('media-player'), $this->version, false);
+		wp_register_script('cookies', get_template_directory_uri() . '/js/utils/cookies.js', array(), $this->version, false);
 
 
 	}

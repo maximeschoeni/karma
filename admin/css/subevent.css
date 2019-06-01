@@ -10,10 +10,15 @@ table.children-table tr th {
 
 	min-width: 0;
 }
-table.children-table input {
+table.children-table input.text {
 	width: 100%;
 	box-sizing: border-box;
 }
+table.children-table select {
+	max-width: 150px;
+}
+
+
 table.children-table select {
 }
 button.children-table-add-child {

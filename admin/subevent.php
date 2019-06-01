@@ -5,7 +5,7 @@
  */
 class Karma_Subevent {
 
-	public $version = '000';
+	public $version = '001';
 
 	public $sub_type = 'event';
 	public $sub_type_name = array();

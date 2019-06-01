@@ -6,7 +6,9 @@ function createChildrenManager(container) {
     columns: ["date", "hour", "place", "city", "country", "more", "remove"],
 		add: function(item) {
 			if (!item) {
-				item = {};
+				item = {
+					in_agenda: "1"
+				};
 			}
 			this.items.push(item);
 		},
@@ -100,23 +102,44 @@ function buildChildrenTable(manager) {
 							})
 						);
 					} else {
-						return build("td.child-cell",
-							build("input", function() {
-						    this.type = "text";
-						    this.name = "subevent["+field.name+"][]";
-						    this.value = item[field.name] || "";
-						    this.addEventListener("input", function() {
-						      item[field.name] = this.value;
-						    });
-						  })
-						);
+						if (field.input === 'checkbox') {
+							var hiddenInput = build("input", function() {
+								this.type = "hidden";
+								this.name = "subevent["+field.name+"][]";
+								this.value = item[field.name];
+							});
+							return build("td.child-cell",
+								hiddenInput,
+								build("input", function() {
+							    this.type = "checkbox";
+							    this.checked = item[field.name] === "1" || false;
+							    this.addEventListener("change", function() {
+										console.log("change", this.checked);
+							      item[field.name] = this.checked ? "1" : "0";
+										hiddenInput.value = this.checked ? "1" : "0";
+							    });
+							  })
+							);
+						} else {
+							return build("td.child-cell",
+								build("input", function() {
+							    this.type = "text";
+									this.className = "text";
+							    this.name = "subevent["+field.name+"][]";
+							    this.value = item[field.name] || "";
+							    this.addEventListener("input", function() {
+							      item[field.name] = this.value;
+							    });
+							  })
+							);
+						}
 					}
 				}),
-        build("td.child-cell.more",
-          item.id && build("a.button", "more...", function() {
-            this.href = manager.admin_url+"post.php?post="+item.id+"&action=edit";
-          })
-				),
+        // build("td.child-cell.more",
+        //   item.id && build("a.button", "more...", function() {
+        //     this.href = manager.admin_url+"post.php?post="+item.id+"&action=edit";
+        //   })
+				// ),
 				build("td.child-cell.remove",
 					build("input", function() {
 						this.type = "hidden";

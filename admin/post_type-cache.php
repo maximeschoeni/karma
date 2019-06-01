@@ -142,7 +142,7 @@ class Karma_Post_type_Cache {
 			$metadata = wp_get_attachment_metadata($attachement_id);
 
 			$images[] = apply_filters('background-image-manager-sources', array(array(
-				'url' => wp_get_attachment_url($attachement_id),
+				'src' => wp_get_attachment_url($attachement_id),
 				'width' => $metadata['width'],
 				'height' => $metadata['height']
 			)), $attachement_id);

@@ -12,6 +12,7 @@ function createCollection(items) {
 		},
 		remove: function(key, value) {
 			var index = this.getIndex(key, value);
+			console.log(index, key, value);
 			if (index > -1) {
 				this.items.splice(index, 1);
 			}
@@ -40,10 +41,10 @@ function createCollection(items) {
 			for (var i = 0; i < this.items.length; i++) {
 				var value = this.items[i][key];
 				if (value || value === 0) {
-					var group = groups.getItem(id, value);
+					var group = groups.getItem(id || key, value);
 					if (!group) {
 						group = createCollection();
-						group[id] = value;
+						group[id || key] = value;
 						groups.add(group);
 					}
 					group.add(this.items[i]);
@@ -73,7 +74,7 @@ function createCollection(items) {
 		},
 		getIndex: function(key, value) {
 			for (var i = 0; i < this.items.length; i++) {
-				if (this.items[key] === value) {
+				if (this.items[i][key] === value) {
 					return i;
 				}
 			}

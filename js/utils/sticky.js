@@ -45,7 +45,6 @@ function createStickyManager() {
 				this.element.style.position = "fixed";
 				this.element.style.top = this.windowY + "px";
 			}
-			console.log("update", manager.offsetY);
 		}
 	};
 	window.addEventListener("scroll", function(event) {
