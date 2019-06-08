@@ -4,7 +4,7 @@
 
 class Karma {
 
-	var $version = '000';
+	var $version = '001';
 
 	/**
 	 *	Karma_Options object
@@ -101,6 +101,7 @@ class Karma {
 		wp_register_script('translation', get_template_directory_uri() . '/js/utils/translation.js', array(), $this->version, true);
 		wp_register_script('grid-system', get_template_directory_uri() . '/js/utils/grid-system.js', array('tinyAnimate'), $this->version, true);
 		wp_register_script('sticky', get_template_directory_uri() . '/js/utils/sticky.js', array(), $this->version, true);
+		wp_register_script('custom-dispatcher', get_template_directory_uri() . '/js/utils/custom-dispatcher.js', array(), $this->version, true);
 // 		wp_enqueue_script('grid', get_template_directory_uri() . '/js/grid.js', array('grid-system'), $this->version, true);
 // 		wp_enqueue_script('projects-grid', get_template_directory_uri() . '/js/projects.js', array('grid'), $this->version, true);
 // 		wp_enqueue_script('project', get_template_directory_uri() . '/js/project.js', array('grid'), $this->version, true);

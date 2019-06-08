@@ -1,5 +1,7 @@
-function ajaxCall(url, data, method, callback, parser) {
-// 	console.log(url);
+if (!window.Ajax) {
+	Ajax = {};
+}
+Ajax.send = function(url, data, method, callback, parser) {
 	var xhr = new XMLHttpRequest();
 	xhr.open(method, url);
 	xhr.onreadystatechange = function () {
@@ -20,6 +22,31 @@ function ajaxCall(url, data, method, callback, parser) {
 		//xhr.setRequestHeader("Content-type", "text/html");
 	}
 	xhr.send(data);
+}
+
+function ajaxCall(url, data, method, callback, parser) {
+	Ajax.send(url, data, method, callback, parser);
+// 	console.log(url);
+	// var xhr = new XMLHttpRequest();
+	// xhr.open(method, url);
+	// xhr.onreadystatechange = function () {
+	// 	if (xhr.readyState === XMLHttpRequest.DONE) {
+	// 		if (xhr.status === 200) {
+	// 			if (parser) {
+	// 				callback(parser(xhr.responseText));
+	// 			} else {
+	// 				callback(xhr.responseText);
+	// 			}
+	// 		} else {
+	// 			console.log("Error: " + xhr.status); // An error occurred during the request.
+	// 		}
+	// 	}
+	// };
+	// if (method === "POST") {
+	// 	xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+	// 	//xhr.setRequestHeader("Content-type", "text/html");
+	// }
+	// xhr.send(data);
 }
 function ajaxGet(url, data, callback) {
 	if (data) {

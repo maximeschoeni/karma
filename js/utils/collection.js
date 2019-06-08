@@ -12,7 +12,6 @@ function createCollection(items) {
 		},
 		remove: function(key, value) {
 			var index = this.getIndex(key, value);
-			console.log(index, key, value);
 			if (index > -1) {
 				this.items.splice(index, 1);
 			}
@@ -27,6 +26,13 @@ function createCollection(items) {
 				}
 			}
 		},
+		// findItem: function(finder) {
+		// 	for (var i = 0; i < this.items.length; i++) {
+		// 		if (finder.apply(this.items[i])) {
+		// 			return this.items[i];
+		// 		}
+		// 	}
+		// },
 		getItems: function(key, value) {
 			var collection = createCollection();
 			for (var i = 0; i < this.items.length; i++) {
