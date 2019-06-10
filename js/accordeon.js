@@ -10,7 +10,8 @@ function createAccordeon() {
 		if (body.parentNode === container) {
 			container.removeChild(body);
 		}
-		handle.addEventListener("click", function() {
+		handle.addEventListener("click", function(event) {
+			event.preventDefault();
 			if (accordeon.current === item) {
 				accordeon.update();
 				if (item.onClose) {
