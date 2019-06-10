@@ -40,7 +40,7 @@ class Karma_Orders {
 	public function create_log_table(){
 		global $wpdb, $karma;
 
-		$table_version = '001';
+		$table_version = '002';
 
 		if ($table_version !== $karma->options->get_option('orders_table_version')) {
 
@@ -66,7 +66,7 @@ class Karma_Orders {
 				lastname varchar(50) NOT NULL,
 				phone varchar(50) NOT NULL,
 				address varchar(100) NOT NULL,
-				zip varchar(10) NOT NULL,
+				zip varchar(50) NOT NULL,
 				city varchar(50) NOT NULL,
 				country varchar(50) NOT NULL,
 				price float NOT NULL DEFAULT '0',
