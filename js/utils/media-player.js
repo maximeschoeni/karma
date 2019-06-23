@@ -80,10 +80,17 @@ function createMediaPlayer() {
 		}
 	};
 	player.back = function() {
-		this.animate(function(value) {
-			player.offset = value;
-			player.render();
-		});
+		var duration = Math.min(this.duration, this.duration*Math.abs(this.offset));
+		if (this.offset) {
+			this.animation = TinyAnimate.animate(this.offset, 0, duration, function(value) {
+				player.offset = value;
+				player.render();
+				if (player.onFrame) {
+					player.onFrame(value);
+				}
+			}, this.easing);
+		}
+
 	};
 	player.changeId = function(id, dir) {
 		var slide = this.getItem("id", id);
