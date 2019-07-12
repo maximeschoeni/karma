@@ -1,3 +1,7 @@
 function __(text, localization) {
-	return window[localization] && window[localization][text] || text;
+	if (typeof localization === "string") {
+		return window[localization] && window[localization][text] || text;
+	} else {
+		return localization[text] || text;
+	}
 }

@@ -42,6 +42,9 @@ class Karma {
 			// require(get_template_directory() . '/admin/admin.php');
 			add_action('admin_enqueue_scripts', array($this, 'admin_enqueue_scripts'), 99);
 
+			// remove builtin postcustom metabox
+			add_action('admin_menu' , array($this, 'remove_post_custom_fields'));
+
 		} else {
 
 			// require(get_template_directory() . '/public/site.php');
@@ -117,6 +120,8 @@ class Karma {
 
 		wp_register_script('cookies', get_template_directory_uri() . '/js/utils/cookies.js', array(), $this->version, false);
 
+		wp_register_script('gmap-api', 'https://maps.googleapis.com/maps/api/js?key=AIzaSyCD-L65XebK9SUZUtCGJbpf7IBSMYSBbn8', array(), false, true);
+		wp_register_script('gmap', get_template_directory_uri() . '/js/utils/gmap.js', array('gmap-api'), $this->version, true);
 
 	}
 
@@ -142,6 +147,16 @@ class Karma {
 
 		// wp_enqueue_script('date-popup');
 		// wp_enqueue_script('children-table');
+	}
+
+	/**
+	 * Remove Custom Fields meta box
+	 * @hook 'admin_menu'
+	 */
+	public function remove_post_custom_fields() {
+
+		remove_meta_box('postcustom' , 'post' , 'normal');
+
 	}
 
 	/**

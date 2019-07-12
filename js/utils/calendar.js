@@ -29,9 +29,12 @@ var Calendar = {
 
 				while((date.getTime() < firstDayNextMonth.getTime()) || date.getDay() !== 1) {
 					var day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
 					days.push({
 						date: day,
 						sqlDate: Calendar.format(day),
+						isDayBefore: day.getTime() == lastDayPrevMonth.getTime(),
+						isDayAfter: day.getTime() == firstDayNextMonth.getTime(),
 						isOffset: day.getTime() <= lastDayPrevMonth.getTime() || day.getTime() >= firstDayNextMonth.getTime(),
 						isToday: day.getTime() === today,
 						isWeekend: day.getDay() === 0 || day.getDay() === 6
@@ -154,43 +157,31 @@ var Calendar = {
 			return date;
 		}
 	},
-	formatRange: function(date1, date2) {
+	formatRange: function(date1, date2, sep) {
 		if (typeof date1 === "string") date1 = this.parse(date1);
 		if (typeof date2 === "string") date2 = this.parse(date2);
-
+		if (!sep) {
+			sep = " — ";
+		}
 		var d1 = this.format(date1, 'dd');
 		var m1 = this.format(date1, 'mm');
 		var y1 = this.format(date1, 'yyyy');
 		var d2 = this.format(date2, 'dd');
 		var m2 = this.format(date2, 'mm');
 		var y2 = this.format(date2, 'yyyy');
-
     if (y1 === y2) {
-
       if (m1 === m2) {
-
         if (d1 === d2) {
-
           return this.format(date2, 'dd.mm.yyyy');
-
         } else {
-
-          return this.format(date1, 'dd') + ' — ' + this.format(date2, 'dd.mm.yyyy');
-
+          return this.format(date1, 'dd') + sep + this.format(date2, 'dd.mm.yyyy');
         }
-
       } else {
-
-        return this.format(date1, 'dd.mm') + ' — ' + this.format(date2, 'dd.mm.yyyy');
-
+        return this.format(date1, 'dd.mm') + sep + this.format(date2, 'dd.mm.yyyy');
       }
-
     } else {
-
-      return this.format(date1, 'dd.mm.yyyy') + ' — ' + this.format(date2, 'dd.mm.yyyy');
-
+      return this.format(date1, 'dd.mm.yyyy') + sep + this.format(date2, 'dd.mm.yyyy');
     }
-
   }
 
 }

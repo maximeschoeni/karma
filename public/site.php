@@ -93,6 +93,10 @@ class Karma_Site extends Karma {
 		// wp_enqueue_script('agenda', get_template_directory_uri() . '/js/agenda.js', array('popup', 'ajax', 'build', 'calendar', 'grid-slideshow'), $this->version, true);
 		// wp_enqueue_script('intro', get_template_directory_uri() . '/js/intro.js', array('media-player'), $this->version, true);
 
+		// wp_register_script('gmap-api', 'https://maps.googleapis.com/maps/api/js?key=AIzaSyCD-L65XebK9SUZUtCGJbpf7IBSMYSBbn8', array(), false, true);
+		// wp_register_script('gmap', get_template_directory_uri() . '/js/gmap.js', array('gmap-api'), $this->version, true);
+
+
 		wp_enqueue_script('cookies', get_template_directory_uri() . '/js/utils/cookies.js', array('media-player'), $this->version, false);
 
 

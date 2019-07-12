@@ -21,9 +21,9 @@ function registerGmap(div, settings) {
 // 				draggable: false
 		};
 		var map = new google.maps.Map(div, mapOptions);
-		
+
 		if (settings.marker) {
-			
+
 			var marker = new google.maps.Marker({
 					position: location,
 					icon: settings.marker //window.homeURL."/assets/images/pin.png"
@@ -41,7 +41,7 @@ function registerGmap(div, settings) {
 			map.setOptions({styles: settings.styles});
 		}
 	}
-	
+
 	for (var i in defaults) {
 		if (!settings[i]) {
 			settings[i] = defaults[i];
@@ -58,5 +58,5 @@ function registerGmap(div, settings) {
 				render(location);
 			}
 		});
-	} 
+	}
 }

@@ -24,7 +24,7 @@ CustomDispatcher.prototype.off = function(eventName, callback) {
 CustomDispatcher.prototype.trigger = function(eventName, args) {
 	if (this.events[eventName]) {
 		for (var i = 0; i < this.events[eventName].length; i++) {
-			this.events[eventName][i].apply(this, args);
+			this.events[eventName][i].apply(this, typeof args === "object" ? args : [args]);
 		}
 	}
 };
