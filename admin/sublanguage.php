@@ -15,6 +15,8 @@ class Karma_Sublanguage {
 			add_filter('karma_default_meta_value', array($this, 'get_default_meta_value'), 10, 3);
 			add_filter('karma_default_field_value', array($this, 'get_default_field_value'), 10, 3);
 
+			add_action('karma_cluster_update', array($this, 'cluster_update'), 10, 3);
+
 		}
 
 		add_filter('karma_append_language_to_path', array($this, 'append_language_to_path'));
@@ -73,6 +75,37 @@ class Karma_Sublanguage {
 
 		return $default;
 	}
+
+
+	/**
+	 * @hook 'karma_cluster_update'
+	 */
+	public function cluster_update($post, $cluster, $clusters) {
+		global $sublanguage_admin;
+
+		if (isset($sublanguage_admin) && $sublanguage_admin->is_post_type_translatable($post->post_type)) {
+
+			$current_language = $sublanguage_admin->get_language();
+
+			foreach ($sublanguage_admin->get_languages() as $language) {
+
+				if ($language !== $current_language) {
+
+					$sublanguage_admin->set_language($language);
+
+					$cluster = $clusters->create_cluster($post);
+					$clusters->update_cache($cluster);
+
+				}
+
+			}
+
+			$sublanguage_admin->set_language($current_language);
+
+		}
+
+	}
+
 
 }
 
