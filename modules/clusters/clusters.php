@@ -22,20 +22,10 @@ class Karma_Clusters {
 		$this->file_manager->directory = 'clusters';
 
 
-
-		// add_action('save_post', array($this, 'save_post'), 10, 3);
-		// add_action('before_delete_post', array($this, 'before_delete_post'), 10);
-		// add_action('edit_term', array($this, 'edit_term'), 10, 3);
-		// add_action('pre_delete_term', array($this, 'pre_delete_term'), 10, 2);
-		//
-		// add_action('wp_loaded', array($this, 'update_dependencies'));
-
 		// add_action('wp_insert_post', array($this, 'on_save'), 99, 3);
 
 		add_action('wp_ajax_get_cluster', array($this, 'ajax_get_cluster'));
 		add_action('wp_ajax_nopriv_get_cluster', array($this, 'ajax_get_cluster'));
-
-
 		add_action('wp_ajax_clusters_update', array($this, 'ajax_clusters_update'));
 		add_action('wp_ajax_clusters_get_expired_clusters', array($this, 'ajax_clusters_get_expired_clusters'));
 
@@ -44,6 +34,13 @@ class Karma_Clusters {
 		add_action('before_delete_post', array($this, 'before_delete_post'), 10);
 		add_action('edit_term', array($this, 'edit_term'), 10, 3);
 		add_action('pre_delete_term', array($this, 'pre_delete_term'), 10, 2);
+
+		add_action('updated_post_meta', array($this, 'updated_post_meta'), 10, 4);
+		add_action('added_post_meta', array($this, 'updated_post_meta'), 10, 4);
+		add_action('deleted_post_meta', array($this, 'updated_post_meta'), 10, 4);
+		add_action('updated_term_meta', array($this, 'updated_term_meta'), 10, 4);
+		add_action('added_term_meta', array($this, 'updated_term_meta'), 10, 4);
+		add_action('deleted_term_meta', array($this, 'updated_term_meta'), 10, 4);
 
 		add_action('wp_loaded', array($this, 'update_dependencies'));
 
@@ -522,6 +519,20 @@ class Karma_Clusters {
 	}
 
 	/**
+	 * @hook 'update_{$meta_type}_meta', "added_{$meta_type}_meta", "deleted_{$meta_type}_meta"
+	 */
+	function updated_post_meta($meta_id, $object_id, $meta_key, $meta_value) {
+
+		if ($meta_key !== 'dependencies') {
+
+			$dependencies = get_post_meta($object_id, 'dependencies');
+			$this->dependencies = array_merge($this->dependencies, $dependencies);
+
+		}
+
+	}
+
+	/**
 	 * @hook 'edit_term'
 	 */
 	function edit_term($term_id, $tt_id, $taxonomy) {
@@ -540,6 +551,20 @@ class Karma_Clusters {
 		$dependencies = get_term_meta($term->term_id, 'dependencies');
 
 		$this->dependencies = array_merge($this->dependencies, $dependencies);
+
+	}
+
+	/**
+	 * @hook 'update_{$meta_type}_meta', "added_{$meta_type}_meta", "deleted_{$meta_type}_meta"
+	 */
+	function updated_term_meta($meta_id, $object_id, $meta_key, $meta_value) {
+
+		if ($meta_key !== 'dependencies') {
+
+			$dependencies = get_term_meta($object_id, 'dependencies');
+			$this->dependencies = array_merge($this->dependencies, $dependencies);
+
+		}
 
 	}
 
