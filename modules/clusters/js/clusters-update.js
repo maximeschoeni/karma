@@ -1,10 +1,6 @@
 if (!window.Clusters) {
 	var Clusters = {};
 }
-
-
-console.log(window.ajaxGet);
-
 Clusters.getExpiredClusters = function(callback) {
 	ajaxGet(Clusters.ajax_url, {
 		action: 'clusters_get_expired_clusters'
@@ -21,7 +17,7 @@ Clusters.updateExpiredClusters = function(callback) {
 			if (ids.length) {
 					Clusters.onUpdate && Clusters.onUpdate(total, ids.length);
 				ajaxPost(Clusters.ajax_url, {
-					action: 'clusters_update_dependency',
+					action: 'clusters_update',
 					id: ids.shift()
 				}, function(results) {
 					console.log(results);

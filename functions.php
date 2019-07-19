@@ -137,6 +137,7 @@ class Karma {
 		// wp_enqueue_style('date-popup-styles', get_template_directory_uri().'/admin/css/date-popup.css');
 		// wp_enqueue_style('children-table-styles', get_template_directory_uri().'/admin/css/children-table.css');
 
+		wp_register_script('ajax', get_template_directory_uri() . '/js/utils/ajax.js', array(), $this->version, true);
 		wp_register_script('build', get_template_directory_uri() . '/js/utils/build.js', array(), $this->version, true);
 		wp_register_script('calendar', get_template_directory_uri() . '/js/utils/calendar.js', array(), $this->version, true);
 		wp_register_script('sortable', get_template_directory_uri() . '/js/utils/sortable.js', array(), $this->version, true);

@@ -22,7 +22,11 @@ class Karma_Clusters_UI {
 	function admin_enqueue_scripts( $hook ) {
 		global $karma;
 
-	  wp_enqueue_script('clusters-update', get_template_directory_uri() . '/modules/clusters/js/clusters-update.js', array(), $karma->version, true);
+	  wp_enqueue_script('clusters-update', get_template_directory_uri() . '/modules/clusters/js/clusters-update.js', array('ajax'), $karma->version, true);
+
+		wp_localize_script('clusters-update', 'Clusters', array(
+			'ajax_url' => admin_url('admin-ajax.php')
+		));
 
 	}
 

@@ -7,19 +7,19 @@ class Karma_Clusters {
 
 	var $dependencies = array();
 	var $post_types = array();
+	var $dependency_table = 'clusters';
 
 	/**
 	 *	Constructor
 	 */
 	function __construct() {
 
-		require_once get_template_directory() . '/modules/clusters/dependency-expirer.php';
 		require_once get_template_directory() . '/modules/clusters/ui.php';
-
 		require_once get_template_directory() . '/admin/class-file.php';
 
 		$this->file_manager = new Karma_Content_Directory;
 		$this->file_manager->directory = 'clusters';
+
 
 
 		// add_action('wp_insert_post', array($this, 'on_save'), 99, 3);
@@ -29,10 +29,12 @@ class Karma_Clusters {
 		add_action('wp_ajax_clusters_update', array($this, 'ajax_clusters_update'));
 		add_action('wp_ajax_clusters_get_expired_clusters', array($this, 'ajax_clusters_get_expired_clusters'));
 
+		add_action('init', array($this, 'create_dependency_tables'));
 
 		add_action('save_post', array($this, 'save_post'), 10, 3);
 		add_action('before_delete_post', array($this, 'before_delete_post'), 10);
 		add_action('edit_term', array($this, 'edit_term'), 10, 3);
+		add_action('create_term', array($this, 'create_term'), 10, 3);
 		add_action('pre_delete_term', array($this, 'pre_delete_term'), 10, 2);
 
 		add_action('updated_post_meta', array($this, 'updated_post_meta'), 10, 4);
@@ -43,10 +45,33 @@ class Karma_Clusters {
 		add_action('deleted_term_meta', array($this, 'updated_term_meta'), 10, 4);
 
 		add_action('wp_loaded', array($this, 'update_dependencies'));
+		add_action('redirect_post_location', array($this, 'redirect'));
 
 
 
 	}
+
+	/**
+	 * @hook 'init'
+	 */
+	function create_dependency_tables() {
+
+		if (is_admin()) {
+
+			require_once get_template_directory() . '/admin/table.php';
+
+			Karma_Table::create($this->dependency_table, "
+				id int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+				object_id int(11) NOT NULL,
+				target_id int(11) NOT NULL,
+				object varchar(10) NOT NULL,
+				type varchar(50) NOT NULL
+			", '000');
+
+		}
+
+	}
+
 
 	/**
 	 * register cluster for post type
@@ -66,9 +91,11 @@ class Karma_Clusters {
 
 		if (isset($this->post_types[$post->post_type]) && is_callable($this->post_types[$post->post_type])) {
 
-			require_once get_template_directory() . '/admin/cluster-dependencies.php';
+			require_once get_template_directory() . '/modules/clusters/dependencies.php';
 
-			$dependencies = new Karma_Cluster_Dependencies($post->ID);
+			$dependencies = new Karma_Cluster_Dependencies($post->ID, $this->dependency_table);
+
+			$this->current_dependencies = $dependencies;
 
 			call_user_func($this->post_types[$post->post_type], $cluster, $post, $dependencies, $this);
 
@@ -103,18 +130,19 @@ class Karma_Clusters {
 	}
 
 	/**
+	 * ONLY FOR TEST !
+	 *
 	 * @hook 'wp_insert_post'
 	 */
-	// public function on_save($id, $post, $update) {
-	//
-	// 	if (isset($this->post_types[$post->post_type])) {
-	//
-	// 		$this->update_cluster($id);
-	//
-	// 	}
-	//
-	// }
+	public function on_save($id, $post, $update) {
 
+		if (isset($this->post_types[$post->post_type])) {
+
+			$this->update_cluster($id);
+
+		}
+
+	}
 
 	/**
 	 * @return Cluster or null
@@ -216,7 +244,7 @@ class Karma_Clusters {
 	 */
 	public function update_cache($post_id, $data) {
 
-		$this->file_manager->write_file(apply_filters('karma_append_language_to_path', $post_id), 'data.json', json_encode($data, JSON_PRETTY_PRINT));
+		$this->file_manager->write_file(apply_filters('karma_append_language_to_path', $post_id), 'data.json', json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
 	}
 
@@ -234,7 +262,7 @@ class Karma_Clusters {
 	 */
 	public function get_cache($post_id) {
 
-		$data = $this->read_file(apply_filters('karma_append_language_to_path', $post_id), 'data.json');
+		$data = $this->file_manager->read_file(apply_filters('karma_append_language_to_path', $post_id), 'data.json');
 
 		if ($data) {
 
@@ -468,7 +496,15 @@ class Karma_Clusters {
 	// }
 
 
+	/**
+	 * @filter 'redirect_post_location'
+	 */
+	function redirect($url) {
 
+		$this->update_dependencies();
+
+		return $url;
+	}
 
 	/**
 	 * @hook 'wp_loaded'
@@ -493,7 +529,7 @@ class Karma_Clusters {
 	 * @hook 'save_post'
 	 */
 	function save_post($post_id, $post, $update) {
-		global $karma;
+		global $wpdb;
 
 		if (isset($this->post_types[$post->post_type])) {
 
@@ -501,7 +537,19 @@ class Karma_Clusters {
 
 		}
 
-		$dependencies = get_post_meta($post_id, 'dependencies');
+		$table = $wpdb->prefix.$this->dependency_table;
+
+		if ($update) {
+
+			$dependencies = $wpdb->get_col($wpdb->prepare("SELECT target_id FROM $table WHERE object = 'post' AND object_id = %d", $post_id));
+
+		} else {
+
+			$dependencies = $wpdb->get_col($wpdb->prepare("SELECT target_id FROM $table WHERE object = 'post' AND type = %s", $post->post_type));
+
+		}
+
+		// $dependencies = get_post_meta($post_id, 'dependencies');
 
 		$this->dependencies = array_merge($this->dependencies, $dependencies);
 
@@ -511,8 +559,22 @@ class Karma_Clusters {
 	 * @hook 'before_delete_post'
 	 */
 	function before_delete_post($post_id) {
+		global $wpdb;
 
-		$dependencies = get_post_meta($post_id, 'dependencies');
+
+		$table = $wpdb->prefix.$this->dependency_table;
+
+		$dependencies = $wpdb->get_col($wpdb->prepare("SELECT target_id FROM $table WHERE object = 'post' AND object_id = %d", $post_id));
+
+		$wpdb->delete($table, array(
+			'object' => 'post',
+			'object_id' => $post_id
+		), array(
+			'%s',
+			'%d'
+		));
+
+		// $dependencies = get_post_meta($post_id, 'dependencies');
 
 		$this->dependencies = array_merge($this->dependencies, $dependencies);
 
@@ -523,12 +585,12 @@ class Karma_Clusters {
 	 */
 	function updated_post_meta($meta_id, $object_id, $meta_key, $meta_value) {
 
-		if ($meta_key !== 'dependencies') {
-
-			$dependencies = get_post_meta($object_id, 'dependencies');
-			$this->dependencies = array_merge($this->dependencies, $dependencies);
-
-		}
+		// if ($meta_key !== 'dependencies') {
+		//
+		// 	$dependencies = get_post_meta($object_id, 'dependencies');
+		// 	$this->dependencies = array_merge($this->dependencies, $dependencies);
+		//
+		// }
 
 	}
 
@@ -536,19 +598,59 @@ class Karma_Clusters {
 	 * @hook 'edit_term'
 	 */
 	function edit_term($term_id, $tt_id, $taxonomy) {
+		global $wpdb;
 
-		$dependencies = get_term_meta($term_id, 'dependencies');
+		$table = $wpdb->prefix.$this->dependency_table;
+
+		$dependencies = $wpdb->get_col($wpdb->prepare("SELECT target_id FROM $table WHERE object = 'term' AND object_id = %d", $term_id));
+
+
+		// $dependencies = get_term_meta($term_id, 'dependencies');
 
 		$this->dependencies = array_merge($this->dependencies, $dependencies);
 
 	}
 
 	/**
+	 * @hook 'create_term'
+	 */
+	function create_term($term_id, $tt_id, $taxonomy) {
+		global $wpdb;
+
+		$table = $wpdb->prefix.$this->dependency_table;
+
+		$dependencies = $wpdb->get_col($wpdb->prepare("SELECT target_id FROM $table WHERE object = 'term' AND type = %s", $taxonomy));
+
+
+		// $dependencies = get_term_meta($term_id, 'dependencies');
+
+		$this->dependencies = array_merge($this->dependencies, $dependencies);
+
+	}
+
+
+
+
+
+	/**
 	 * @hook 'pre_delete_term'
 	 */
 	function pre_delete_term($term, $taxonomy) {
+		global $wpdb;
 
-		$dependencies = get_term_meta($term->term_id, 'dependencies');
+		$table = $wpdb->prefix.$this->dependency_table;
+
+		$dependencies = $wpdb->get_col($wpdb->prepare("SELECT target_id FROM $table WHERE object = 'term' AND object_id = %d", $term->term_id));
+
+		$wpdb->delete($table, array(
+			'object' => 'term',
+			'object_id' => $term->term_id
+		), array(
+			'%s',
+			'%d'
+		));
+
+		// $dependencies = get_term_meta($term->term_id, 'dependencies');
 
 		$this->dependencies = array_merge($this->dependencies, $dependencies);
 
@@ -559,12 +661,12 @@ class Karma_Clusters {
 	 */
 	function updated_term_meta($meta_id, $object_id, $meta_key, $meta_value) {
 
-		if ($meta_key !== 'dependencies') {
-
-			$dependencies = get_term_meta($object_id, 'dependencies');
-			$this->dependencies = array_merge($this->dependencies, $dependencies);
-
-		}
+		// if ($meta_key !== 'dependencies') {
+		//
+		// 	$dependencies = get_term_meta($object_id, 'dependencies');
+		// 	$this->dependencies = array_merge($this->dependencies, $dependencies);
+		//
+		// }
 
 	}
 
