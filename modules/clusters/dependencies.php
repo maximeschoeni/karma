@@ -49,25 +49,6 @@ class Karma_Cluster_Dependencies {
 			'%d'
 		));
 
-		// $this->dependencies[$post_id] = array();
-
-
-		// $wpdb->delete($wpdb->postmeta, array(
-		// 	'meta_key' => 'dependencies',
-		// 	'meta_value' => $post_id
-		// ), array(
-		// 	'%s',
-		// 	'%d'
-		// ));
-		//
-		// $wpdb->delete($wpdb->termmeta, array(
-		// 	'meta_key' => 'dependencies',
-		// 	'meta_value' => $post_id
-		// ), array(
-		// 	'%s',
-		// 	'%d'
-		// ));
-
 	}
 
 	/**

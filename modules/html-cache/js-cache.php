@@ -3,7 +3,7 @@
 /**
  * Core HTML cache manager
  */
-class Karma_Html_Cache_Manager {
+class Karma_JS_Cache {
 
 	/**
 	 * print_scripts
@@ -15,9 +15,13 @@ class Karma_Html_Cache_Manager {
 
 		$js_filename = md5($key) . '.js';
 
-		require_once plugin_dir_path( __FILE__ ) . 'class-cache-file.php';
+		// require_once plugin_dir_path( __FILE__ ) . 'class-cache-file.php';
+		//
+		// $file = new Karma_Cache_File;
 
-		$file = new Karma_Cache_File;
+		require_once get_template_directory() . '/admin/class-file.php';
+		$this->file_manager = new Karma_Content_Directory;
+		$this->file_manager->directory = 'js-cache';
 
 		// handle script localization
 		$scripts = $this->get_all_scripts($wp_scripts->queue); // -> also used later!
@@ -31,7 +35,9 @@ class Karma_Html_Cache_Manager {
 			echo '<script type="text/javascript">'."\n".$l10n."\n".'</script>'."\n";
 		}
 
-		if (!file_exists(WP_CONTENT_DIR . '/' . $file->cache_dir . '/js/' . $js_filename)) {
+		// if (!file_exists(WP_CONTENT_DIR . '/' . $file->cache_dir . '/js/' . $js_filename)) {
+
+		if (!$this->file_manager->file_exists('', $js_filename)) {
 
 			$l10n = '';
 			$js = '';
@@ -47,15 +53,18 @@ class Karma_Html_Cache_Manager {
 
 			}
 
-			include plugin_dir_path( __FILE__ ) . 'jshrink/minifier.php';
+			// include plugin_dir_path( __FILE__ ) . 'jshrink/minifier.php';
+
+			include get_template_directory() . '/modules/html-cache/jshrink/minifier.php';
 
 			$minified_code = JShrink\Minifier::minify($js);
 
-			$file->write_file('js', $js_filename, $minified_code);
+			$this->file_manager->write_file('', $js_filename, $minified_code);
 
 		}
 
-		$js_src = WP_CONTENT_URL . '/cache/js/' . $js_filename;
+		// $js_src = WP_CONTENT_URL . '/cache/js/' . $js_filename;
+		$js_src = $this->file_manager->get_url('', $js_filename);
 
     echo '<script type="text/javascript" src="'.$js_src.'?t='.time().'"></script>';
 

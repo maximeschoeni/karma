@@ -27,7 +27,9 @@ class Karma_Options {
 		if (is_admin()) {
 
 			add_action('admin_menu', array($this, 'admin_menu'));
-			$this->save_options();
+			add_action('init', array($this, 'save_options'));
+
+			//$this->save_options();
 
 		}
 

@@ -263,7 +263,7 @@ class Karma_Clusters {
 
 		// wp_cache_set($post_id, $data, 'clusters');
 
-		$this->file_manager->write(apply_filters('karma_append_language_to_path', $post_id), 'data.json', json_encode($data, JSON_PRETTY_PRINT));
+		$this->file_manager->write_file(apply_filters('karma_append_language_to_path', $post_id), 'data.json', json_encode($data, JSON_PRETTY_PRINT));
 
 	}
 
@@ -285,7 +285,7 @@ class Karma_Clusters {
 
 		// return wp_cache_get($post_id, 'clusters');
 
-		$data = $this->read_file(apply_filters('karma_append_language_to_path', $post_id), 'data.json');
+		$data = $this->file_manager->read_file(apply_filters('karma_append_language_to_path', $post_id), 'data.json');
 
 		return json_decode($data);
 
@@ -304,7 +304,7 @@ class Karma_Clusters {
 
 			// return WP_CONTENT_URL . '/' . $wp_object_cache->cache_dir . '/' . $wp_object_cache->object_dir . '/clusters/' . $post_id . apply_filters('karma_append_language_to_path', '') . '/data.json';
 
-			return $this->file_manager->get_url(apply_filters('karma_append_language_to_path', $post_id), 'data.json'));
+			return $this->file_manager->get_url(apply_filters('karma_append_language_to_path', $post_id), 'data.json');
 
 		} else {
 

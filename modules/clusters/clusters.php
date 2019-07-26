@@ -14,7 +14,9 @@ class Karma_Clusters {
 	 */
 	function __construct() {
 
-		require_once get_template_directory() . '/modules/clusters/ui.php';
+		// require_once get_template_directory() . '/modules/clusters/ui.php';
+		require_once get_template_directory() . '/modules/task-manager/task-manager.php';
+
 		require_once get_template_directory() . '/admin/class-file.php';
 
 		$this->file_manager = new Karma_Content_Directory;
@@ -26,8 +28,13 @@ class Karma_Clusters {
 
 		add_action('wp_ajax_get_cluster', array($this, 'ajax_get_cluster'));
 		add_action('wp_ajax_nopriv_get_cluster', array($this, 'ajax_get_cluster'));
+
+		add_filter('karma_task', array($this, 'add_task'));
 		add_action('wp_ajax_clusters_update', array($this, 'ajax_clusters_update'));
-		add_action('wp_ajax_clusters_get_expired_clusters', array($this, 'ajax_clusters_get_expired_clusters'));
+
+
+		// add_action('wp_ajax_clusters_update', array($this, 'ajax_clusters_update'));
+		// add_action('wp_ajax_clusters_get_expired_clusters', array($this, 'ajax_clusters_get_expired_clusters'));
 
 		add_action('init', array($this, 'create_dependency_tables'));
 
@@ -37,15 +44,15 @@ class Karma_Clusters {
 		add_action('create_term', array($this, 'create_term'), 10, 3);
 		add_action('pre_delete_term', array($this, 'pre_delete_term'), 10, 2);
 
-		add_action('updated_post_meta', array($this, 'updated_post_meta'), 10, 4);
-		add_action('added_post_meta', array($this, 'updated_post_meta'), 10, 4);
-		add_action('deleted_post_meta', array($this, 'updated_post_meta'), 10, 4);
-		add_action('updated_term_meta', array($this, 'updated_term_meta'), 10, 4);
-		add_action('added_term_meta', array($this, 'updated_term_meta'), 10, 4);
-		add_action('deleted_term_meta', array($this, 'updated_term_meta'), 10, 4);
+		// add_action('updated_post_meta', array($this, 'updated_post_meta'), 10, 4);
+		// add_action('added_post_meta', array($this, 'updated_post_meta'), 10, 4);
+		// add_action('deleted_post_meta', array($this, 'updated_post_meta'), 10, 4);
+		// add_action('updated_term_meta', array($this, 'updated_term_meta'), 10, 4);
+		// add_action('added_term_meta', array($this, 'updated_term_meta'), 10, 4);
+		// add_action('deleted_term_meta', array($this, 'updated_term_meta'), 10, 4);
 
-		add_action('wp_loaded', array($this, 'update_dependencies'));
-		add_action('redirect_post_location', array($this, 'redirect'));
+		// add_action('wp_loaded', array($this, 'update_dependencies'));
+		// add_action('redirect_post_location', array($this, 'redirect'));
 
 
 
@@ -99,6 +106,8 @@ class Karma_Clusters {
 
 			call_user_func($this->post_types[$post->post_type], $cluster, $post, $dependencies, $this);
 
+			// -> html cache
+			// do_action('karma_cluster_save', $post, $cluster, $this);
 		}
 
 		return $cluster;
@@ -113,8 +122,20 @@ class Karma_Clusters {
 
 		if ($post) {
 
+			$current = $this->get_cache($post_id);
+
 			$cluster = $this->create_cluster($post);
 			$this->update_cache($post->ID, $cluster);
+
+			if ($current) {
+
+				do_action('karma_cache_update_object', 'cluster', $post->post_type, $post_id);
+
+			} else {
+
+				do_action('karma_cache_create_object', 'cluster', $post->post_type, $post_id);
+
+			}
 
 			// -> sublanguage
 			do_action('karma_cluster_update', $post, $cluster, $this);
@@ -124,6 +145,8 @@ class Karma_Clusters {
 		} else {
 
 			$this->delete_cache($post_id);
+
+			do_action('karma_cache_delete_object', 'cluster', '', $post_id);
 
 		}
 
@@ -306,7 +329,7 @@ class Karma_Clusters {
 
 			if ($cluster) {
 
-				echo json_encode($cluster);
+				echo json_encode($cluster, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
 			} else {
 
@@ -328,7 +351,7 @@ class Karma_Clusters {
 	}
 
 	/**
-	 * @ajax 'clusters_update_dependency'
+	 * @ajax 'clusters_update'
 	 */
 	public function ajax_clusters_update() {
 		global $karma;
@@ -350,6 +373,15 @@ class Karma_Clusters {
 				$output['success'] = true;
 				$output['cluster'] = $cluster;
 
+				// $output['options'] = get_option('karma');
+
+				$output['remove_log'] = $this->remove_dependency($post_id);
+
+				// $output['options_after'] = get_option('karma');
+				//
+				// $output['dependencies_after'] = $karma->options->get_option('expired_clusters');
+
+
 				// $post = get_post($post_id);
 				//
 				// if ($post) {
@@ -364,13 +396,13 @@ class Karma_Clusters {
 				//
 				// }
 
-				$index = array_search($post_id, $dependencies);
-
-				$output['index'] = $index;
-
-				unset($dependencies[$index]);
-
-				$karma->options->update_option('expired_clusters', $dependencies);
+				// $index = array_search($post_id, $dependencies);
+				//
+				// $output['index'] = $index;
+				//
+				// unset($dependencies[$index]);
+				//
+				// $karma->options->update_option('expired_clusters', $dependencies);
 
 			} else {
 
@@ -470,15 +502,46 @@ class Karma_Clusters {
 	/**
 	 * @ajax 'clusters_get_expired_clusters'
 	 */
-	public function ajax_clusters_get_expired_clusters() {
+	// public function ajax_clusters_get_expired_clusters() {
+	// 	global $karma;
+	//
+	// 	$output = $karma->options->get_option('expired_clusters');
+	//
+	// 	echo json_encode($output);
+	//
+	// 	exit;
+	//
+	// }
+
+	/**
+	 * @filter 'karma_task'
+	 */
+	public function add_task($tasks) {
 		global $karma;
 
-		$output = $karma->options->get_option('expired_clusters');
+		$ids = $karma->options->get_option('expired_clusters', array());
 
-		echo json_encode($output);
+		if ($ids) {
 
-		exit;
+			$items = array();
 
+			foreach ($ids as $id) {
+
+				$items[] = array(
+					'id' => $id
+				);
+
+			}
+
+			$tasks[] = array(
+				'name' => 'Clusters',
+				'items' => $items,
+				'task' => 'clusters_update'
+			);
+
+		}
+
+		return $tasks;
 	}
 
 	/**
@@ -499,28 +562,75 @@ class Karma_Clusters {
 	/**
 	 * @filter 'redirect_post_location'
 	 */
-	function redirect($url) {
+	// function redirect($url) {
+	//
+	// 	$this->update_dependencies();
+	//
+	// 	return $url;
+	// }
+	//
+	// /**
+	//  * @hook 'wp_loaded'
+	//  */
+	// function update_dependencies() {
+	// 	global $karma;
+	//
+	// 	if ($this->dependencies) {
+	//
+	// 		$dependencies = $karma->options->get_option('expired_clusters', array());
+	// 		$dependencies = array_merge($this->dependencies, $dependencies);
+	// 		$dependencies = array_map('intval', array_unique($dependencies));
+	//
+	// 		$karma->options->update_option('expired_clusters', $dependencies);
+	//
+	// 	}
+	//
+	// }
 
-		$this->update_dependencies();
+	/**
+	 * add_dependencies
+	 */
+	function add_dependencies($ids) {
+		global $karma;
 
-		return $url;
+		$dependencies = $karma->options->get_option('expired_clusters', array());
+		$dependencies = array_merge($ids, $dependencies);
+		$dependencies = array_map('intval', array_unique($dependencies));
+
+		$karma->options->update_option('expired_clusters', $dependencies);
+
 	}
 
 	/**
-	 * @hook 'wp_loaded'
+	 * add_dependency
 	 */
-	function update_dependencies() {
+	function add_dependency($id) {
 		global $karma;
 
-		if ($this->dependencies) {
+		$dependencies = $karma->options->get_option('expired_clusters', array());
+		$dependencies[] = intval($id);
 
-			$dependencies = $karma->options->get_option('expired_clusters', array());
-			$dependencies = array_merge($this->dependencies, $dependencies);
-			$dependencies = array_map('intval', array_unique($dependencies));
+		$karma->options->update_option('expired_clusters', $dependencies);
 
-			$karma->options->update_option('expired_clusters', $dependencies);
+	}
+
+	/**
+	 * remove_dependency
+	 */
+	function remove_dependency($id) {
+		global $karma;
+
+		$dependencies = $karma->options->get_option('expired_clusters', array());
+
+		$index = array_search($id, $dependencies);
+
+		if ($index !== false) {
+
+			array_splice($dependencies, $index, 1);
 
 		}
+
+		return $karma->options->update_option('expired_clusters', $dependencies);
 
 	}
 
@@ -531,11 +641,7 @@ class Karma_Clusters {
 	function save_post($post_id, $post, $update) {
 		global $wpdb;
 
-		if (isset($this->post_types[$post->post_type])) {
-
-			$this->dependencies[] = $post_id;
-
-		}
+		$dependencies = array();
 
 		$table = $wpdb->prefix.$this->dependency_table;
 
@@ -549,9 +655,17 @@ class Karma_Clusters {
 
 		}
 
+		if (isset($this->post_types[$post->post_type])) {
+
+			$dependencies[] = $post_id;
+
+		}
+
 		// $dependencies = get_post_meta($post_id, 'dependencies');
 
-		$this->dependencies = array_merge($this->dependencies, $dependencies);
+		// $this->dependencies = array_merge($this->dependencies, $dependencies);
+
+		$this->add_dependencies($dependencies);
 
 	}
 
@@ -576,7 +690,9 @@ class Karma_Clusters {
 
 		// $dependencies = get_post_meta($post_id, 'dependencies');
 
-		$this->dependencies = array_merge($this->dependencies, $dependencies);
+		// $this->dependencies = array_merge($this->dependencies, $dependencies);
+
+		$this->add_dependencies($dependencies);
 
 	}
 
@@ -607,7 +723,9 @@ class Karma_Clusters {
 
 		// $dependencies = get_term_meta($term_id, 'dependencies');
 
-		$this->dependencies = array_merge($this->dependencies, $dependencies);
+		// $this->dependencies = array_merge($this->dependencies, $dependencies);
+
+		$this->add_dependencies($dependencies);
 
 	}
 
@@ -624,7 +742,9 @@ class Karma_Clusters {
 
 		// $dependencies = get_term_meta($term_id, 'dependencies');
 
-		$this->dependencies = array_merge($this->dependencies, $dependencies);
+		// $this->dependencies = array_merge($this->dependencies, $dependencies);
+
+		$this->add_dependencies($dependencies);
 
 	}
 
@@ -652,7 +772,9 @@ class Karma_Clusters {
 
 		// $dependencies = get_term_meta($term->term_id, 'dependencies');
 
-		$this->dependencies = array_merge($this->dependencies, $dependencies);
+		// $this->dependencies = array_merge($this->dependencies, $dependencies);
+
+		$this->add_dependencies($dependencies);
 
 	}
 

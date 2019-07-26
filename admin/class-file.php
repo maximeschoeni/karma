@@ -11,18 +11,55 @@ class Karma_Content_Directory {
 	/**
 	 * get url
 	 */
-	public function get_url($dir, $file) {
+	public function get_url($dir = '', $file = '') {
 
-		return WP_CONTENT_URL . '/' . $this->directory . '/' . $dir . '/' . $file;
+		$url = WP_CONTENT_URL . '/' . $this->directory;
+
+		if ($dir) {
+
+			$url .= '/' . $dir;
+
+		}
+
+		if ($file) {
+
+			$url .= '/' . $file;
+
+		}
+
+		return $url;
+
+	}
+
+	/**
+	 * get path
+	 */
+	public function get_path($dir = '', $file = '') {
+
+		$path = WP_CONTENT_DIR . '/' . $this->directory;
+
+		if ($dir) {
+
+			$path .= '/' . $dir;
+
+		}
+
+		if ($file) {
+
+			$path .= '/' . $file;
+
+		}
+
+		return $path;
 
 	}
 
 	/**
 	 * Check file
 	 */
-	public function file_exists($dir, $file = '') {
+	public function file_exists($dir = '', $file = '') {
 
-		$path = WP_CONTENT_DIR . '/' . $this->directory . '/' . $dir . '/' . $file;
+		$path = $this->get_path($dir, $file);
 
 		return file_exists($path);
 
@@ -33,7 +70,7 @@ class Karma_Content_Directory {
 	 */
 	public function write_file($dir, $filename, $data) {
 
-		$path = WP_CONTENT_DIR . '/' . $this->directory . '/' . $dir;
+		$path = $this->get_path($dir);
 
 		if (!file_exists($path)) {
 
@@ -50,7 +87,7 @@ class Karma_Content_Directory {
 	 */
 	public function read_file($dir, $filename) {
 
-		$file = WP_CONTENT_DIR . '/' . $this->directory . '/' . $dir . '/' . $filename;
+		$file = $this->get_path($dir, $filename);
 
 		if (file_exists($file)) {
 
@@ -64,22 +101,35 @@ class Karma_Content_Directory {
 	/**
 	 * Erase directory
 	 */
-	public function erase_dir($dir) {
+	public function erase_dir($dir = '', $file = '') {
 
-		$dir = WP_CONTENT_DIR . '/' . $this->directory . '/' . $dir;
+		$path = $this->get_path($dir, $file);
 
-		$this->rrmdir($dir);
+		$this->rrmdir($path);
 
 	}
 
 	/**
+	 * Erase directory
+	 */
+	// public function erase_file($dir = '', $file = '') {
+	//
+	// 	$path = $this->get_path($dir, $file);
+	//
+	// 	unlink($path);
+	//
+	// 	return $path;
+	//
+	// }
+
+	/**
+	 * DEPRECATED
+	 *
 	 * Erase cache
 	 */
 	public function erase_root() {
 
-		$dir = WP_CONTENT_DIR . '/' . $this->directory;
-
-		$this->rrmdir($dir);
+		$this->erase_dir();
 
 	}
 
@@ -96,21 +146,28 @@ class Karma_Content_Directory {
 
 				if ($object != "." && $object != "..") {
 
-					if (is_dir($dir."/".$object)) {
+					$this->rrmdir($dir."/".$object);
 
-						$this->rrmdir($dir."/".$object);
-
-				 	} else {
-
-						unlink($dir."/".$object);
-
-					}
+					// if (is_dir($dir."/".$object)) {
+					//
+					// 	$this->rrmdir($dir."/".$object);
+					//
+				 	// } else {
+					//
+					// 	unlink($dir."/".$object);
+					//
+					// }
 
 				}
 
 			}
 
 			rmdir($dir);
+
+		} else if (is_file($dir)) {
+
+			unlink($dir);
+
 		}
 
 	}

@@ -7,10 +7,12 @@ Ajax.send = function(url, data, method, callback, parser) {
 	xhr.onreadystatechange = function () {
 		if (xhr.readyState === XMLHttpRequest.DONE) {
 			if (xhr.status === 200) {
-				if (parser) {
-					callback(parser(xhr.responseText));
-				} else {
-					callback(xhr.responseText);
+				if (callback) {
+					if (parser) {
+						callback(parser(xhr.responseText));
+					} else {
+						callback(xhr.responseText);
+					}
 				}
 			} else {
 				console.log("Error: " + xhr.status); // An error occurred during the request.
