@@ -33,7 +33,8 @@ Class Karma_Cache_Mod_Rewrite {
 			'RewriteEngine On',
 			'RewriteBase '.$home_root,
 			'RewriteCond %{QUERY_STRING} =""',
-			'RewriteCond %{DOCUMENT_ROOT}'.$home_root.'wp-content/cache/html%{REQUEST_URI}index.html -f',
+			'RewriteCond %{DOCUMENT_ROOT}'.$home_root.'wp-content/cache/html%{REQUEST_URI} -f [OR]',
+			'RewriteCond %{DOCUMENT_ROOT}'.$home_root.'wp-content/cache/html%{REQUEST_URI} -d',
 			'RewriteRule ^.*$ '.$home_root.'wp-content/cache/html%{REQUEST_URI} [L]',
 			'</IfModule>'
 		);

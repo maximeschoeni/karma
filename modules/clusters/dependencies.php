@@ -54,13 +54,14 @@ class Karma_Cluster_Dependencies {
 	/**
 	 * add post_type dependency
 	 */
-	public function add_post_type($post_type) {
+	public function add_type($object, $type, $context = '') {
 		global $wpdb;
 
 		$wpdb->insert($wpdb->prefix.$this->dependency_table, array(
 			'target_id' => $this->post_id,
-			'object' => 'post',
-			'type' => $post_type
+			'object' => $object,
+			'type' => $type,
+			'context' => $context
 		), array(
 			'%d',
 			'%s',
@@ -70,20 +71,79 @@ class Karma_Cluster_Dependencies {
 	}
 
 	/**
-	 * add taxonomy dependency
+	 * add post dependency
 	 */
-	public function add_taxonomy($taxonomy) {
+	public function add_id($object, $id) {
 		global $wpdb;
 
 		$wpdb->insert($wpdb->prefix.$this->dependency_table, array(
 			'target_id' => $this->post_id,
-			'object' => 'term',
-			'type' => $taxonomy
+			'object' => $object,
+			'object_id' => $id
 		), array(
 			'%d',
 			'%s',
-			'%s'
+			'%d'
 		));
+
+	}
+
+	/**
+	 * add post dependency
+	 */
+	public function add_ids($object, $ids, $type = null) {
+
+		foreach ($ids as $id) {
+
+			$this->add_id($object, $id);
+
+		}
+
+		if ($type) {
+
+			$this->add_type($object, $type);
+
+		}
+
+	}
+
+
+
+	/**
+	 * add post_type dependency
+	 */
+	public function add_post_type($post_type) {
+		// global $wpdb;
+		//
+		// $wpdb->insert($wpdb->prefix.$this->dependency_table, array(
+		// 	'target_id' => $this->post_id,
+		// 	'object' => 'post',
+		// 	'type' => $post_type
+		// ), array(
+		// 	'%d',
+		// 	'%s',
+		// 	'%s'
+		// ));
+
+		$this->add_type('post', $post_type);
+
+	}
+
+	/**
+	 * add taxonomy dependency
+	 */
+	public function add_taxonomy($taxonomy) {
+		// global $wpdb;
+		//
+		// $wpdb->insert($wpdb->prefix.$this->dependency_table, array(
+		// 	'target_id' => $this->post_id,
+		// 	'object' => 'term',
+		// 	'type' => $taxonomy
+		// ), array(
+		// 	'%d',
+		// 	'%s',
+		// 	'%s'
+		// ));
 
 		// $wpdb->insert($wpdb->prefix . 'cluster_tax_dep', array(
 		// 	'object_id' => $this->post_id,
@@ -93,23 +153,25 @@ class Karma_Cluster_Dependencies {
 		// 	'%s'
 		// ));
 
+		$this->add_type('term', $taxonomy);
+
 	}
 
 	/**
 	 * add post dependency
 	 */
 	public function add_post_id($post_id) {
-		global $wpdb;
-
-		$wpdb->insert($wpdb->prefix.$this->dependency_table, array(
-			'target_id' => $this->post_id,
-			'object' => 'post',
-			'object_id' => $post_id
-		), array(
-			'%d',
-			'%s',
-			'%d'
-		));
+		// global $wpdb;
+		//
+		// $wpdb->insert($wpdb->prefix.$this->dependency_table, array(
+		// 	'target_id' => $this->post_id,
+		// 	'object' => 'post',
+		// 	'object_id' => $post_id
+		// ), array(
+		// 	'%d',
+		// 	'%s',
+		// 	'%d'
+		// ));
 
 		// $wpdb->insert($wpdb->prefix . 'cluster_post_dep', array(
 		// 	'object_id' => $this->post_id,
@@ -125,6 +187,7 @@ class Karma_Cluster_Dependencies {
 
 		// add_post_meta($post_id, 'dependencies', $this->post_id);
 
+		$this->add_id('post', $post_id);
 	}
 
 	/**
@@ -132,11 +195,13 @@ class Karma_Cluster_Dependencies {
 	 */
 	public function add_post_ids($post_ids) {
 
-		foreach ($post_ids as $post_id) {
+		// foreach ($post_ids as $post_id) {
+		//
+		// 	$this->add_post_id($post_id);
+		//
+		// }
 
-			$this->add_post_id($post_id);
-
-		}
+		$this->add_ids('post', $post_ids);
 
 	}
 
@@ -144,22 +209,24 @@ class Karma_Cluster_Dependencies {
 	 * add term dependency
 	 */
 	public function add_term_id($term_id) {
-		global $wpdb;
-
-		$wpdb->insert($wpdb->prefix.$this->dependency_table, array(
-			'target_id' => $this->post_id,
-			'object' => 'term',
-			'object_id' => $term_id
-		), array(
-			'%d',
-			'%s',
-			'%d'
-		));
+		// global $wpdb;
+		//
+		// $wpdb->insert($wpdb->prefix.$this->dependency_table, array(
+		// 	'target_id' => $this->post_id,
+		// 	'object' => 'term',
+		// 	'object_id' => $term_id
+		// ), array(
+		// 	'%d',
+		// 	'%s',
+		// 	'%d'
+		// ));
 
 		// $this->dependencies[$this->post_id]['terms'][] = $term_id;
 		// $this->term_dependencies[] = $term_id;
 
 		// add_term_meta($term_id, 'dependencies', $this->post_id);
+
+		$this->add_id('term', $term_id);
 
 	}
 
@@ -168,11 +235,13 @@ class Karma_Cluster_Dependencies {
 	 */
 	public function add_term_ids($term_ids) {
 
-		foreach ($term_ids as $term_id) {
+		// foreach ($term_ids as $term_id) {
+		//
+		// 	$this->add_term_id($term_id);
+		//
+		// }
 
-			$this->add_term_id($term_id);
-
-		}
+		$this->add_ids('term', $term_ids);
 
 	}
 

@@ -15,11 +15,18 @@ class Karma_Sublanguage {
 			add_filter('karma_default_meta_value', array($this, 'get_default_meta_value'), 10, 3);
 			add_filter('karma_default_field_value', array($this, 'get_default_field_value'), 10, 3);
 
-			add_action('karma_cluster_update', array($this, 'cluster_update'), 10, 3);
+			// add_action('karma_cluster_update', array($this, 'cluster_update'), 10, 3);
 
 		}
 
 		add_filter('karma_append_language_to_path', array($this, 'append_language_to_path'));
+
+		add_filter('karma_html_cache_url', array($this, 'append_language_to_query'));
+		add_filter('karma_cluster_link_raw', array($this, 'append_language_to_query'));
+
+		add_filter('karma_cluster_items_to_update', array($this, 'cluster_items_to_update'));
+
+
 
 	}
 
@@ -31,11 +38,17 @@ class Karma_Sublanguage {
 
 		if (isset($sublanguage_admin) && (!$sublanguage_admin->is_default() || $sublanguage_admin->get_option('show_slug'))) {
 
-			$path .= '/' . $sublanguage_admin->get_language()->post_name;
+			$language = $sublanguage_admin->get_language();
 
 		} else if (isset($sublanguage) && (!$sublanguage->is_default() || $sublanguage->get_option('show_slug'))) {
 
-			$path .= '/' . $sublanguage->get_language()->post_name;
+			$language = $sublanguage->get_language();
+
+		}
+
+		if (isset($language) && $language) {
+
+			$path .= '/' . $language->post_name;
 
 		}
 
@@ -81,30 +94,94 @@ class Karma_Sublanguage {
 	 * @hook 'karma_cluster_update'
 	 */
 	public function cluster_update($post, $cluster, $clusters) {
+		// global $sublanguage_admin;
+		//
+		// if (isset($sublanguage_admin) && $sublanguage_admin->is_post_type_translatable($post->post_type)) {
+		//
+		// 	$current_language = $sublanguage_admin->get_language();
+		//
+		// 	foreach ($sublanguage_admin->get_languages() as $language) {
+		//
+		// 		if ($language !== $current_language) {
+		//
+		// 			$sublanguage_admin->set_language($language);
+		//
+		// 			$cluster = $clusters->create_cluster($post);
+		// 			$clusters->update_cache($cluster);
+		//
+		// 		}
+		//
+		// 	}
+		//
+		// 	$sublanguage_admin->set_language($current_language);
+		//
+		// }
+
+	}
+
+	/**
+	 * @filter 'karma_cluster_items_to_update'
+	 */
+	public function cluster_items_to_update($items) {
 		global $sublanguage_admin;
 
-		if (isset($sublanguage_admin) && $sublanguage_admin->is_post_type_translatable($post->post_type)) {
+		$new_items = array();
 
-			$current_language = $sublanguage_admin->get_language();
+		if (isset($sublanguage_admin)) {
 
-			foreach ($sublanguage_admin->get_languages() as $language) {
+			foreach ($items as $item) {
 
-				if ($language !== $current_language) {
+				if ($sublanguage_admin->is_post_type_translatable($item['post_type'])) {
 
-					$sublanguage_admin->set_language($language);
+					foreach ($sublanguage_admin->get_languages() as $language) {
 
-					$cluster = $clusters->create_cluster($post);
-					$clusters->update_cache($cluster);
+						$new_item = $item;
+						$new_item['language'] = $language->post_name;
+						$new_items[] = $new_item;
+
+					}
+
+				} else {
+
+					$new_item = $item;
+					$new_items[] = $new_item;
 
 				}
 
 			}
 
-			$sublanguage_admin->set_language($current_language);
+			return $new_items;
 
 		}
 
+		return $items;
 	}
+
+	/**
+	 * @filter 'karma_append_language_to_query'
+	 */
+	public function append_language_to_query($query) {
+		global $sublanguage, $sublanguage_admin;
+
+		if (isset($sublanguage_admin) && $sublanguage_admin->is_sub()) {
+
+			$language = $sublanguage_admin->get_language();
+
+		} else if (isset($sublanguage) && $sublanguage->is_sub()) {
+
+			$language = $sublanguage->get_language();
+
+		}
+
+		if (isset($language) && $language) {
+
+			$query = add_query_arg(array('language' => $language->post_name), $query);
+
+		}
+
+		return $query;
+	}
+
 
 
 }

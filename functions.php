@@ -143,6 +143,7 @@ class Karma {
 		wp_register_script('sortable', get_template_directory_uri() . '/js/utils/sortable.js', array(), $this->version, true);
 		wp_register_script('date-popup', get_template_directory_uri() . '/admin/js/date-popup.js', array('build', 'calendar'), $this->version, true);
 		wp_register_script('children-table', get_template_directory_uri() . '/admin/js/children-table.js', array('build', 'calendar', 'sortable'), $this->version, true);
+		wp_register_script('custom-dispatcher', get_template_directory_uri() . '/js/utils/custom-dispatcher.js', array(), $this->version, true);
 
 
 		// wp_enqueue_script('date-popup');

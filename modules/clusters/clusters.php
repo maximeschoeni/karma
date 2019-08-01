@@ -26,6 +26,8 @@ class Karma_Clusters {
 
 		// add_action('wp_insert_post', array($this, 'on_save'), 99, 3);
 
+
+
 		add_action('wp_ajax_get_cluster', array($this, 'ajax_get_cluster'));
 		add_action('wp_ajax_nopriv_get_cluster', array($this, 'ajax_get_cluster'));
 
@@ -72,8 +74,10 @@ class Karma_Clusters {
 				object_id int(11) NOT NULL,
 				target_id int(11) NOT NULL,
 				object varchar(10) NOT NULL,
-				type varchar(50) NOT NULL
-			", '000');
+				type varchar(50) NOT NULL,
+				context varchar(1) NOT NULL,
+				status smallint(1) NOT NULL
+			", '002');
 
 		}
 
@@ -102,6 +106,8 @@ class Karma_Clusters {
 
 			$dependencies = new Karma_Cluster_Dependencies($post->ID, $this->dependency_table);
 
+			$dependencies->add_post_id($post->ID);
+
 			$this->current_dependencies = $dependencies;
 
 			call_user_func($this->post_types[$post->post_type], $cluster, $post, $dependencies, $this);
@@ -129,16 +135,16 @@ class Karma_Clusters {
 
 			if ($current) {
 
-				do_action('karma_cache_update_object', 'cluster', $post->post_type, $post_id);
+				do_action('karma_cluster_update_object', 'cluster', $post->post_type, $post_id);
 
 			} else {
 
-				do_action('karma_cache_create_object', 'cluster', $post->post_type, $post_id);
+				do_action('karma_cluster_create_object', 'cluster', $post->post_type, $post_id);
 
 			}
 
 			// -> sublanguage
-			do_action('karma_cluster_update', $post, $cluster, $this);
+			// do_action('karma_cluster_update', $post, $cluster, $this);
 
 			return $cluster;
 
@@ -146,7 +152,7 @@ class Karma_Clusters {
 
 			$this->delete_cache($post_id);
 
-			do_action('karma_cache_delete_object', 'cluster', '', $post_id);
+			do_action('karma_cluster_delete_object', 'cluster', '', $post_id);
 
 		}
 
@@ -308,10 +314,10 @@ class Karma_Clusters {
 
 		} else {
 
-			return add_query_arg(array(
+			return apply_filters('karma_cluster_link_raw', add_query_arg(array(
 				'action' => 'get_cluster',
 				'id' => $post_id
-			), admin_url('admin-ajax.php'));
+			), admin_url('admin-ajax.php')));
 
 		}
 
@@ -354,62 +360,89 @@ class Karma_Clusters {
 	 * @ajax 'clusters_update'
 	 */
 	public function ajax_clusters_update() {
-		global $karma;
+		global $wpdb;
 
 		$output = array();
 
-		if (isset($_POST['id'])) {
+		if (isset($_POST['target_id'])) {
 
-			$post_id = intval($_POST['id']);
-			$dependencies = $karma->options->get_option('expired_clusters');
+			$target_id = intval($_POST['target_id']);
+			// $dependencies = $karma->options->get_option('expired_clusters');
 
-			$output['id'] = $post_id;
-			$output['dependencies'] = $dependencies;
+			$output['target_id'] = $target_id;
+			// $output['dependencies'] = $dependencies;
 
-			if (in_array($post_id, $dependencies)) {
+			$output['cluster'] = $this->update_cluster($target_id);
 
-				$cluster = $this->update_cluster($post_id);
+			$table = $wpdb->prefix.$this->dependency_table;
 
-				$output['success'] = true;
-				$output['cluster'] = $cluster;
+			// $row = $wpdb->get_var($wpdb->prepare(
+			//  "SELECT id, status FROM $table WHERE target_id = %d",
+			//  $dependency_id
+			// ));
 
-				// $output['options'] = get_option('karma');
+			$wpdb->update($table, array(
+				'status' => 0
+			), array(
+				'status' => 1,
+				'target_id' => $target_id
+			), array(
+				'%d',
+				'%d'
+			), array(
+				'%d'
+			));
 
-				$output['remove_log'] = $this->remove_dependency($post_id);
-
-				// $output['options_after'] = get_option('karma');
-				//
-				// $output['dependencies_after'] = $karma->options->get_option('expired_clusters');
-
-
-				// $post = get_post($post_id);
-				//
-				// if ($post) {
-				//
-				// 	$cluster = $this->update_cluster($post);
-				// 	$output['success'] = true;
-				// 	$output['cluster'] = $cluster;
-				//
-				// } else {
-				//
-				// 	$output['error'] = 'post not exists';
-				//
-				// }
-
-				// $index = array_search($post_id, $dependencies);
-				//
-				// $output['index'] = $index;
-				//
-				// unset($dependencies[$index]);
-				//
-				// $karma->options->update_option('expired_clusters', $dependencies);
-
-			} else {
-
-				$output['error'] = 'id not in expire list';
+			$wpdb->delete($table, array(
+				'status' => 2,
+				'target_id' => $target_id
+			), array(
+				'%d',
+				'%d'
+			));
 
 
-			}
+			// if ($row->status === '1') {
+			//
+			// 	$wpdb->update($table, array(
+			// 		'status' => 0
+			// 	), array(
+			// 		'status' => 1,
+			// 		'target_id' => $target_id,
+			// 	), array(
+			// 		'%d'
+			// 	), array(
+			// 		'%d'
+			// 	));
+			//
+			// } else if ($row->status === '2') {
+			//
+			// 	$wpdb->delete($table, array(
+		 	// 		'id' => $dependency_id,
+		 	// 	), array(
+		 	// 		'%d'
+		 	// 	));
+			//
+			// }
+
+
+			// if (in_array($post_id, $dependencies)) {
+			//
+			// 	$cluster = $this->update_cluster($post_id);
+			//
+			// 	$output['success'] = true;
+			// 	$output['cluster'] = $cluster;
+			//
+			// 	// $output['options'] = get_option('karma');
+			//
+			// 	$output['remove_log'] = $this->remove_dependency($post_id);
+			//
+			// } else {
+			//
+			// 	$output['error'] = 'id not in expire list';
+			//
+			//
+			// }
 
 		} else {
 
@@ -517,21 +550,57 @@ class Karma_Clusters {
 	 * @filter 'karma_task'
 	 */
 	public function add_task($tasks) {
-		global $karma;
+		global $wpdb;
+		// global $karma;
+		//
+		// $ids = $karma->options->get_option('expired_clusters', array());
+		//
+		// if ($ids) {
+		//
+		// 	$items = array();
+		//
+		// 	foreach ($ids as $id) {
+		//
+		// 		$items[] = array(
+		// 			'id' => $id
+		// 		);
+		//
+		// 	}
+		//
+		// 	$tasks[] = array(
+		// 		'name' => 'Clusters',
+		// 		'items' => $items,
+		// 		'task' => 'clusters_update'
+		// 	);
+		//
+		// }
 
-		$ids = $karma->options->get_option('expired_clusters', array());
+		$table = $wpdb->prefix.$this->dependency_table;
 
-		if ($ids) {
+		// $dependency_ids = $wpdb->get_col("SELECT id FROM $table WHERE status > 0");
+
+		$dependencies = $wpdb->get_results(
+			"SELECT d.target_id, p.post_type FROM $table AS d
+			JOIN $wpdb->posts AS p ON (d.target_id = p.ID)
+			WHERE d.status > 0
+			GROUP BY d.target_id"
+		);
+
+		if ($dependencies) {
 
 			$items = array();
 
-			foreach ($ids as $id) {
+			foreach ($dependencies as $dependency) {
 
 				$items[] = array(
-					'id' => $id
+					'target_id' => $dependency->target_id,
+					'post_type' => $dependency->post_type,
+					'action' => 'clusters_update'
 				);
 
 			}
+
+			$items = apply_filters('karma_cluster_items_to_update', $items);
 
 			$tasks[] = array(
 				'name' => 'Clusters',
@@ -590,82 +659,87 @@ class Karma_Clusters {
 	/**
 	 * add_dependencies
 	 */
-	function add_dependencies($ids) {
-		global $karma;
-
-		$dependencies = $karma->options->get_option('expired_clusters', array());
-		$dependencies = array_merge($ids, $dependencies);
-		$dependencies = array_map('intval', array_unique($dependencies));
-
-		$karma->options->update_option('expired_clusters', $dependencies);
-
-	}
-
-	/**
-	 * add_dependency
-	 */
-	function add_dependency($id) {
-		global $karma;
-
-		$dependencies = $karma->options->get_option('expired_clusters', array());
-		$dependencies[] = intval($id);
-
-		$karma->options->update_option('expired_clusters', $dependencies);
-
-	}
-
-	/**
-	 * remove_dependency
-	 */
-	function remove_dependency($id) {
-		global $karma;
-
-		$dependencies = $karma->options->get_option('expired_clusters', array());
-
-		$index = array_search($id, $dependencies);
-
-		if ($index !== false) {
-
-			array_splice($dependencies, $index, 1);
-
-		}
-
-		return $karma->options->update_option('expired_clusters', $dependencies);
-
-	}
+	// function add_dependencies($ids) {
+	// 	global $karma;
+	//
+	// 	$dependencies = $karma->options->get_option('expired_clusters', array());
+	// 	$dependencies = array_merge($ids, $dependencies);
+	// 	$dependencies = array_map('intval', array_unique($dependencies));
+	//
+	// 	$karma->options->update_option('expired_clusters', $dependencies);
+	//
+	// }
+	//
+	// /**
+	//  * add_dependency
+	//  */
+	// function add_dependency($id) {
+	// 	global $karma;
+	//
+	// 	$dependencies = $karma->options->get_option('expired_clusters', array());
+	// 	$dependencies[] = intval($id);
+	//
+	// 	$karma->options->update_option('expired_clusters', $dependencies);
+	//
+	// }
+	//
+	// /**
+	//  * remove_dependency
+	//  */
+	// function remove_dependency($id) {
+	// 	global $karma;
+	//
+	// 	$dependencies = $karma->options->get_option('expired_clusters', array());
+	//
+	// 	$index = array_search($id, $dependencies);
+	//
+	// 	if ($index !== false) {
+	//
+	// 		array_splice($dependencies, $index, 1);
+	//
+	// 	}
+	//
+	// 	return $karma->options->update_option('expired_clusters', $dependencies);
+	//
+	// }
 
 
 	/**
 	 * @hook 'save_post'
 	 */
 	function save_post($post_id, $post, $update) {
-		global $wpdb;
+		// global $wpdb;
+		//
+		// $dependencies = array();
 
-		$dependencies = array();
-
-		$table = $wpdb->prefix.$this->dependency_table;
+		// $table = $wpdb->prefix.$this->dependency_table;
 
 		if ($update) {
 
-			$dependencies = $wpdb->get_col($wpdb->prepare("SELECT target_id FROM $table WHERE object = 'post' AND object_id = %d", $post_id));
+			$this->update_object('post', $post->post_type, $post->ID);
+
+			// $dependencies = $wpdb->get_col($wpdb->prepare("SELECT target_id FROM $table WHERE object = 'post' AND object_id = %d", $post_id));
 
 		} else {
 
-			$dependencies = $wpdb->get_col($wpdb->prepare("SELECT target_id FROM $table WHERE object = 'post' AND type = %s", $post->post_type));
+			$this->create_object('post', $post->post_type);
+
+			// $dependencies = $wpdb->get_col($wpdb->prepare("SELECT target_id FROM $table WHERE object = 'post' AND type = %s", $post->post_type));
 
 		}
 
-		if (isset($this->post_types[$post->post_type])) {
-
-			$dependencies[] = $post_id;
-
-		}
+		// if (isset($this->post_types[$post->post_type])) {
+		//
+		//
+		// 	// $dependencies[] = $post_id;
+		//
+		// }
 
 		// $dependencies = get_post_meta($post_id, 'dependencies');
 
 		// $this->dependencies = array_merge($this->dependencies, $dependencies);
 
-		$this->add_dependencies($dependencies);
+		// $this->add_dependencies($dependencies);
 
 	}
 
@@ -673,26 +747,28 @@ class Karma_Clusters {
 	 * @hook 'before_delete_post'
 	 */
 	function before_delete_post($post_id) {
-		global $wpdb;
+		// global $wpdb;
+		//
+		//
+		// $table = $wpdb->prefix.$this->dependency_table;
+		//
+		// $dependencies = $wpdb->get_col($wpdb->prepare("SELECT target_id FROM $table WHERE object = 'post' AND object_id = %d", $post_id));
+		//
+		// $wpdb->delete($table, array(
+		// 	'object' => 'post',
+		// 	'object_id' => $post_id
+		// ), array(
+		// 	'%s',
+		// 	'%d'
+		// ));
+		//
+		// // $dependencies = get_post_meta($post_id, 'dependencies');
+		//
+		// // $this->dependencies = array_merge($this->dependencies, $dependencies);
+		//
+		// $this->add_dependencies($dependencies);
 
-
-		$table = $wpdb->prefix.$this->dependency_table;
-
-		$dependencies = $wpdb->get_col($wpdb->prepare("SELECT target_id FROM $table WHERE object = 'post' AND object_id = %d", $post_id));
-
-		$wpdb->delete($table, array(
-			'object' => 'post',
-			'object_id' => $post_id
-		), array(
-			'%s',
-			'%d'
-		));
-
-		// $dependencies = get_post_meta($post_id, 'dependencies');
-
-		// $this->dependencies = array_merge($this->dependencies, $dependencies);
-
-		$this->add_dependencies($dependencies);
+		$this->delete_object('post', null, $post_id);
 
 	}
 
@@ -714,18 +790,20 @@ class Karma_Clusters {
 	 * @hook 'edit_term'
 	 */
 	function edit_term($term_id, $tt_id, $taxonomy) {
-		global $wpdb;
+		// global $wpdb;
+		//
+		// $table = $wpdb->prefix.$this->dependency_table;
+		//
+		// $dependencies = $wpdb->get_col($wpdb->prepare("SELECT target_id FROM $table WHERE object = 'term' AND object_id = %d", $term_id));
+		//
+		//
+		// // $dependencies = get_term_meta($term_id, 'dependencies');
+		//
+		// // $this->dependencies = array_merge($this->dependencies, $dependencies);
+		//
+		// $this->add_dependencies($dependencies);
 
-		$table = $wpdb->prefix.$this->dependency_table;
-
-		$dependencies = $wpdb->get_col($wpdb->prepare("SELECT target_id FROM $table WHERE object = 'term' AND object_id = %d", $term_id));
-
-
-		// $dependencies = get_term_meta($term_id, 'dependencies');
-
-		// $this->dependencies = array_merge($this->dependencies, $dependencies);
-
-		$this->add_dependencies($dependencies);
+		$this->update_object('term', $taxonomy, $term_id);
 
 	}
 
@@ -733,48 +811,49 @@ class Karma_Clusters {
 	 * @hook 'create_term'
 	 */
 	function create_term($term_id, $tt_id, $taxonomy) {
-		global $wpdb;
+		// global $wpdb;
+		//
+		// $table = $wpdb->prefix.$this->dependency_table;
+		//
+		// $dependencies = $wpdb->get_col($wpdb->prepare("SELECT target_id FROM $table WHERE object = 'term' AND type = %s", $taxonomy));
+		//
+		//
+		// // $dependencies = get_term_meta($term_id, 'dependencies');
+		//
+		// // $this->dependencies = array_merge($this->dependencies, $dependencies);
+		//
+		// $this->add_dependencies($dependencies);
 
-		$table = $wpdb->prefix.$this->dependency_table;
-
-		$dependencies = $wpdb->get_col($wpdb->prepare("SELECT target_id FROM $table WHERE object = 'term' AND type = %s", $taxonomy));
-
-
-		// $dependencies = get_term_meta($term_id, 'dependencies');
-
-		// $this->dependencies = array_merge($this->dependencies, $dependencies);
-
-		$this->add_dependencies($dependencies);
+		$this->create_object('term', $taxonomy);
 
 	}
-
-
-
 
 
 	/**
 	 * @hook 'pre_delete_term'
 	 */
 	function pre_delete_term($term, $taxonomy) {
-		global $wpdb;
+		// global $wpdb;
+		//
+		// $table = $wpdb->prefix.$this->dependency_table;
+		//
+		// $dependencies = $wpdb->get_col($wpdb->prepare("SELECT target_id FROM $table WHERE object = 'term' AND object_id = %d", $term->term_id));
+		//
+		// $wpdb->delete($table, array(
+		// 	'object' => 'term',
+		// 	'object_id' => $term->term_id
+		// ), array(
+		// 	'%s',
+		// 	'%d'
+		// ));
+		//
+		// // $dependencies = get_term_meta($term->term_id, 'dependencies');
+		//
+		// // $this->dependencies = array_merge($this->dependencies, $dependencies);
+		//
+		// $this->add_dependencies($dependencies);
 
-		$table = $wpdb->prefix.$this->dependency_table;
-
-		$dependencies = $wpdb->get_col($wpdb->prepare("SELECT target_id FROM $table WHERE object = 'term' AND object_id = %d", $term->term_id));
-
-		$wpdb->delete($table, array(
-			'object' => 'term',
-			'object_id' => $term->term_id
-		), array(
-			'%s',
-			'%d'
-		));
-
-		// $dependencies = get_term_meta($term->term_id, 'dependencies');
-
-		// $this->dependencies = array_merge($this->dependencies, $dependencies);
-
-		$this->add_dependencies($dependencies);
+		$this->update_object('term', $taxonomy, $term_id);
 
 	}
 
@@ -789,6 +868,137 @@ class Karma_Clusters {
 		// 	$this->dependencies = array_merge($this->dependencies, $dependencies);
 		//
 		// }
+
+	}
+
+
+	/**
+	 * @hook 'karma_cluster_create_object'
+	 */
+	function create_object($object, $type, $id = null) {
+		global $wpdb;
+
+		$table = $wpdb->prefix.$this->dependency_table;
+
+		// $urls = $wpdb->get_col($wpdb->prepare(
+		// 	"SELECT url FROM $table WHERE object = %s AND type = %s",
+		// 	$object,
+		// 	$type
+		// ));
+		//
+		// $this->add_expired_urls($urls);
+
+
+
+		// $wpdb->update($table, array(
+		// 	'status' => 1
+		// ), array(
+		// 	'object' => $object,
+		// 	'type' => $type
+		// ), array(
+		// 	'%d'
+		// ), array(
+		// 	'%s',
+		// 	'%s'
+		// ));
+
+		$wpdb->query($wpdb->prepare(
+			"UPDATE $table
+			SET status = %d
+			WHERE object = %s AND type = %s",
+			1,
+			$object,
+			$type
+		));
+
+	}
+
+	/**
+	 * @hook 'karma_cluster_update_object'
+	 */
+	function update_object($object, $type, $id) {
+		global $wpdb;
+
+		$table = $wpdb->prefix.$this->dependency_table;
+
+		// $urls = $wpdb->get_col($wpdb->prepare(
+		// 	"SELECT url FROM $table WHERE object = %s AND object_id = %d",
+		// 	$object,
+		// 	$id
+		// ));
+		//
+		// $this->add_expired_urls($urls);
+
+		// $wpdb->update($table, array(
+		// 	'status' => 1
+		// ), array(
+		// 	'object' => $object,
+		// 	'object_id' => $id
+		// ), array(
+		// 	'%d'
+		// ), array(
+		// 	'%s',
+		// 	'%d'
+		// ));
+
+		$wpdb->query($wpdb->prepare(
+			"UPDATE $table
+			SET status = %d
+			WHERE object = %s AND (object_id = %d OR type = %s AND context = '*')",
+			1,
+			$object,
+			$id,
+			$type
+		));
+
+	}
+
+	/**
+	 * @hook 'karma_cluster_delete_object'
+	 */
+	function delete_object($object, $type, $id) {
+		global $wpdb;
+
+		$table = $wpdb->prefix.$this->dependency_table;
+
+		// $urls = $wpdb->get_col($wpdb->prepare(
+		// 	"SELECT url FROM $table WHERE object = %s AND object_id = %d",
+		// 	$object,
+		// 	$id
+		// ));
+		//
+		// $this->add_expired_urls($urls);
+
+		// $wpdb->delete($table, array(
+		// 	'object' => $object,
+		// 	'object_id' => $id
+		// ), array(
+		// 	'%s',
+		// 	'%d'
+		// ));
+
+		// $wpdb->update($table, array(
+		// 	'status' => '2'
+		// ), array(
+		// 	'object' => $object,
+		// 	'object_id' => $id
+		// ), array(
+		// 	'%d'
+		// ), array(
+		// 	'%s',
+		// 	'%d'
+		// ));
+
+		$wpdb->query($wpdb->prepare(
+			"UPDATE $table
+			SET status = %d
+			WHERE object = %s AND (object_id = %d OR type = %s AND context = '*')",
+			2,
+			$object,
+			$id,
+			$type
+		));
+
 
 	}
 

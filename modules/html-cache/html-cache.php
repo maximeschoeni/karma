@@ -34,10 +34,12 @@ Class Karma_Cache {
 		// add_action('karma_cache_add_taxonomy_dependency', array($this, 'add_taxonomy_dependency'));
 
 
-		add_action('karma_cache_add_dependency_id', array($this, 'add_dependency_id'), 10, 3);
+		add_action('karma_cache_add_dependency_id', array($this, 'add_dependency_id'), 10, 2);
+		add_action('karma_cache_add_dependency_ids', array($this, 'add_dependency_ids'), 10, 2);
 		add_action('karma_cache_add_dependency_type', array($this, 'add_dependency_type'), 10, 3);
 
-		add_filter('karma_task', array($this, 'add_task'));
+
+		add_filter('karma_task', array($this, 'add_task'), 8);
 
 		add_action('save_post', array($this, 'save_post'), 10, 3);
 		add_action('before_delete_post', array($this, 'before_delete_post'), 10);
@@ -45,9 +47,9 @@ Class Karma_Cache {
 		add_action('create_term', array($this, 'create_term'), 10, 3);
 		add_action('pre_delete_term', array($this, 'pre_delete_term'), 10, 2);
 
-		add_action('karma_cache_create_object', array($this, 'create_object'), 10, 2);
-		add_action('karma_cache_update_object', array($this, 'update_object'), 10, 2);
-		add_action('karma_cache_delete_object', array($this, 'delete_object'), 10, 2);
+		add_action('karma_cluster_create_object', array($this, 'create_object'), 10, 3);
+		add_action('karma_cluster_update_object', array($this, 'update_object'), 10, 3);
+		add_action('karma_cluster_delete_object', array($this, 'delete_object'), 10, 3);
 
 		add_action('wp_ajax_karma_cache_regenerate_url', array($this, 'ajax_regenerate_url'));
 
@@ -59,16 +61,26 @@ Class Karma_Cache {
 			add_action('karma_save_options', array($this, 'save_options'));
 			add_action('karma_print_options', array($this, 'print_options'));
 
+			add_action('admin_enqueue_scripts', array($this, 'admin_enqueue_scripts'));
+
 		} else {
 
 			// -> handle html cache
-			add_action('wp', array($this, 'wp'));
+			add_action('wp', array($this, 'wp'), 12); // after sublanguage redirection!
 
 		}
 
 	}
 
+	/**
+	 * @hook 'admin_enqueue_scripts'
+	 */
+	function admin_enqueue_scripts( $hook ) {
+		global $karma;
 
+	  wp_enqueue_script('html-cache', get_template_directory_uri() . '/modules/html-cache/js/html-cache.js', array('task-manager'), $karma->version, true);
+
+	}
 
 
 	/**
@@ -85,8 +97,10 @@ Class Karma_Cache {
 				url varchar(255) NOT NULL,
 				object_id int(11) NOT NULL,
 				object varchar(10) NOT NULL,
-				type varchar(50) NOT NULL
-			", '000');
+				type varchar(50) NOT NULL,
+				context varchar(1) NOT NULL,
+				status smallint(1) NOT NULL
+			", '002');
 
 		}
 
@@ -95,6 +109,64 @@ Class Karma_Cache {
 	/**
 	 * get url for resource
 	 */
+	 public function get_raw_url() {
+		 global $wp_query;
+
+		 $query_object = get_queried_object();
+
+		 $link = '';
+
+		 if (is_home()) {
+
+			 $link = '';
+
+		 } else if (is_singular() || $wp_query->is_posts_page) {
+
+			 $link = '?p='.$query_object->ID;
+
+		 } else if (is_category() || is_tag() || is_tax()) {
+
+			 $link = '?taxonomy='.$query_object->taxonomy.'&term='.$query_object->slug;
+
+		 } else if (is_post_type_archive()) {
+
+			 $link = '?post_type=' . get_query_var('post_type');
+
+		 } else if (is_date()) {
+
+			 if (is_day()) {
+
+				 $link = '?m=' . get_query_var('year') . zeroise(get_query_var('monthnum'), 2) . zeroise(get_query_var('day'), 2);
+
+			 } else if (is_month()) {
+
+				 $link = '?m=' . get_query_var('year') . zeroise(get_query_var('monthnum'), 2);
+
+			 } else {
+				 // return get_year_link(get_query_var('year'));
+				 $link = '?m=' . get_query_var('year');
+
+			 }
+
+		 } else if (is_author()) {
+
+			 $link = '?author=' . get_user_by('slug', get_query_var('author_name'))->ID;
+
+		 } else if (is_search()) {
+
+			 $link = '?s=' . urlencode(get_search_query());
+
+		 } else {
+
+			 // ??
+
+		 }
+
+		 return apply_filters('karma_html_cache_url', $link);
+
+	 }
+
+
 	// public function get_url() {
 	// 	global $wp_query;
 	//
@@ -151,14 +223,45 @@ Class Karma_Cache {
 
 		if (is_home() || is_singular() || is_archive() || is_search() || apply_filters('karma_html_cache_save', false)) {
 
-			if ($karma->options->get_option('html_cache') && empty($_SERVER['QUERY_STRING']) && !apply_filters('karma_html_cache_disable', false)) {
+			if ($karma->options->get_option('html_cache') && !apply_filters('karma_html_cache_disable', false)) {
+
+				if (empty($_GET['cache'])) {
+
+// echo '<pre>';
+// 					var_dump($wp);
+// 					die();
+
+					// wp_redirect(add_query_arg(array('cache' => 1), get_option('home') . $this->get_raw_url()));
+					// wp_redirect(add_query_arg(array('cache' => 1), home_url($this->get_raw_url())));
+					wp_redirect(add_query_arg(array('cache' => 1), get_option('home').'/'.$wp->request));
+					exit;
+
+				}
+
+
+
+				// $raw_url = get_option('home') . $this->get_raw_url();
+
+				// if ($url && strpos($url, $_SERVER['REQUEST_URI']) === false) {
+				//
+				// 	// global $sublanguage;
+				// 	//
+				// 	// $sublanguage->set_language($sublanguage->get_main_language());
+				// 	//
+				// 	// var_dump($sublanguage->get_language());
+				//
+				//
+				//
+				// }
 
 				add_action('wp_print_scripts', array($this, 'dequeue_script'), 100);
 
+				$parts = explode('?', $_SERVER['REQUEST_URI']);
+				$this->dir = trim($parts[0], '/');
+				$this->request_url = $wp->request;
+
 				add_action('wp_head', array($this, 'wp_header'));
 				add_action('wp_footer', array($this, 'wp_footer'));
-
-				$this->request_url = $wp->request;
 
 				ob_start(array($this, 'save_ob'));
 
@@ -173,11 +276,13 @@ Class Karma_Cache {
 	 */
 	public function save_ob($content) {
 
-		$dir = trim($_SERVER['REQUEST_URI'], '/');
+		$url = $this->get_raw_url();
 
-		$this->file_manager->write_file('html/'.$dir, 'index.html', $content);
+		$this->save_dependencies($url);
 
-		$this->save_dependencies($this->request_url);
+		$this->file_manager->write_file('html/'.$this->dir, 'dependencies.json', json_encode($this->dependencies, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+
+		$this->file_manager->write_file('html/'.$this->dir, 'index.html', $content);
 
 		return $content;
 	}
@@ -219,14 +324,36 @@ Class Karma_Cache {
 
 
 
+
 	/**
 	 * @hook karma_cache_add_dependency_id
 	 */
-	public function add_dependency_id($object, $type, $id) {
+	public function add_dependency_id($object, $id, $type = null) {
 
-		if (empty($this->dependencies['id'][$object]) || !in_array($id, $this->dependencies['id'][$object])) {
+		$this->dependencies[$object]['ids'][$id] = true;
 
-			$this->dependencies['id'][$object][] = $id;
+		if ($type) {
+
+			$this->add_dependency_type($object, $type);
+
+		}
+
+	}
+
+	/**
+	 * @hook karma_cache_add_dependency_id
+	 */
+	public function add_dependency_ids($object, $ids, $type = null) {
+
+		foreach ($ids as $id) {
+
+			$this->add_dependency_id($object, $id);
+
+		}
+
+		if ($type) {
+
+			$this->add_dependency_type($object, $type);
 
 		}
 
@@ -235,13 +362,9 @@ Class Karma_Cache {
 	/**
 	 * @hook karma_cache_add_dependency_type
 	 */
-	public function add_dependency_type($object, $type, $id = null) {
+	public function add_dependency_type($object, $type, $context = '') {
 
-		if (empty($this->dependencies['type'][$object]) || !in_array($type, $this->dependencies['type'][$object])) {
-
-			$this->dependencies['type'][$object][] = $type;
-
-		}
+		$this->dependencies[$object]['types'][$type] = $context;
 
 	}
 
@@ -299,17 +422,37 @@ Class Karma_Cache {
 			'%s'
 		));
 
-		if (isset($this->dependencies['type'])) {
+		foreach ($this->dependencies as $object => $object_dependency) {
 
-			foreach ($this->dependencies['type'] as $object => $dependency_types) {
+			if (isset($object_dependency['ids'])) {
 
-				foreach ($dependency_types as $type) {
+				foreach ($object_dependency['ids'] as $id => $nocare) {
 
 					$wpdb->insert($wpdb->prefix.$this->dependency_table, array(
 						'url' => $url,
 						'object' => $object,
-						'type' => $type
+						'object_id' => $id
 					), array(
+						'%s',
+						'%s',
+						'%d',
+					));
+
+				}
+
+			}
+
+			if (isset($object_dependency['types'])) {
+
+				foreach ($object_dependency['types'] as $type => $context) {
+
+					$wpdb->insert($wpdb->prefix.$this->dependency_table, array(
+						'url' => $url,
+						'object' => $object,
+						'type' => $type,
+						'context' => $context
+					), array(
+						'%s',
 						'%s',
 						'%s',
 						'%s'
@@ -321,27 +464,49 @@ Class Karma_Cache {
 
 		}
 
-		if (isset($this->dependencies['id'])) {
-
-			foreach ($this->dependencies['id'] as $object => $dependency_ids) {
-
-				foreach ($dependency_ids as $id) {
-
-					$wpdb->insert($wpdb->prefix.$this->dependency_table, array(
-						'url' => $url,
-						'object' => $object,
-						'object_id' => $id
-					), array(
-						'%s',
-						'%s',
-						'%d'
-					));
-
-				}
-
-			}
-
-		}
+		// if (isset($this->dependencies['type'])) {
+		//
+		// 	foreach ($this->dependencies['type'] as $object => $dependency_types) {
+		//
+		// 		foreach ($dependency_types as $type) {
+		//
+		// 			$wpdb->insert($wpdb->prefix.$this->dependency_table, array(
+		// 				'url' => $url,
+		// 				'object' => $object,
+		// 				'type' => $type
+		// 			), array(
+		// 				'%s',
+		// 				'%s',
+		// 				'%s'
+		// 			));
+		//
+		// 		}
+		//
+		// 	}
+		//
+		// }
+		//
+		// if (isset($this->dependencies['id'])) {
+		//
+		// 	foreach ($this->dependencies['id'] as $object => $dependency_ids) {
+		//
+		// 		foreach ($dependency_ids as $id) {
+		//
+		// 			$wpdb->insert($wpdb->prefix.$this->dependency_table, array(
+		// 				'url' => $url,
+		// 				'object' => $object,
+		// 				'object_id' => $id
+		// 			), array(
+		// 				'%s',
+		// 				'%s',
+		// 				'%d'
+		// 			));
+		//
+		// 		}
+		//
+		// 	}
+		//
+		// }
 
 	}
 
@@ -407,9 +572,36 @@ Class Karma_Cache {
 	 * @filter 'karma_task'
 	 */
 	public function add_task($tasks) {
-		global $karma;
+		global $wpdb, $karma;
 
-		$urls = $karma->options->get_option('karma_cache_expired_url');
+		//$urls = $karma->options->get_option('karma_cache_expired_url');
+
+		// if ($urls) {
+		//
+		// 	$items = array();
+		//
+		// 	foreach ($urls as $url) {
+		//
+		// 		$items[] = array(
+		// 			'url' => $url
+		// 		);
+		//
+		// 	}
+		//
+		// 	$tasks[] = array(
+		// 		'name' => 'HTML Cache',
+		// 		'items' => $items,
+		// 		'task' => 'karma_cache_regenerate_url'
+		// 	);
+		//
+		// }
+
+		$table = $wpdb->prefix.$this->dependency_table;
+
+		// $dependency_ids = $wpdb->get_col("SELECT id FROM $table WHERE status > 0");
+
+		$urls = $wpdb->get_col("SELECT DISTINCT url FROM $table WHERE status > 0");
+
 
 		if ($urls) {
 
@@ -418,7 +610,8 @@ Class Karma_Cache {
 			foreach ($urls as $url) {
 
 				$items[] = array(
-					'url' => $url
+					'url' => $url ? $url : '',
+					'action' => 'karma_cache_regenerate_url'
 				);
 
 			}
@@ -437,83 +630,189 @@ Class Karma_Cache {
 	/**
 	 * @ajax 'karma_cache_regenerate_url'
 	 */
-	public function ajax_regenerate_url() {
-		global $karma;
+	 public function ajax_regenerate_url() {
+		 global $wpdb;
 
-		$output = array();
+		 $output = array();
 
-		if (isset($_POST['url'])) {
+		 if (isset($_POST['url'])) {
+
+			$table = $wpdb->prefix.$this->dependency_table;
 
 			$url = $_POST['url'];
-			$full_url = home_url($url);
 
-			$base = trim(substr($_SERVER['REQUEST_URI'], 0, strpos($_SERVER['REQUEST_URI'], 'wp-admin/admin-ajax.php')), '/'); //: "/contrechamps/wp-admin/admin-ajax.php"
+			$wpdb->update($table, array(
+				'status' => 0
+			), array(
+				'status' => 1,
+				'url' => $url
+			), array(
+				'%d',
+				'%d'
+			), array(
+				'%d'
+			));
 
-			$output['base'] = $base;
-
-			$this->file_manager->erase_dir('html/'.$base.'/'.$url, 'index.html');
-
-			// $output['erase_dir'] = 'html/'.$base.'/'.$url. '/index.html';
-			// $output['server'] = $_SERVER;
-
-			// $ch = curl_init();
-			// curl_setopt($ch, CURLOPT_URL, $full_url);
-			// curl_exec($ch);
-			// curl_close($ch);
+			$wpdb->delete($table, array(
+	 			'status' => 2,
+				'url' => $url
+	 		), array(
+	 			'%d',
+				'%s'
+	 		));
 
 
+			// $dependency_id = $_POST['url'];
+			//
+			// $row = $wpdb->get_row($wpdb->prepare(
+			//  "SELECT url, status FROM $table WHERE id = %d",
+			//  $dependency_id
+			// ));
+			//
+			// if ($row->status === '1') {
+			//
+			// 	$wpdb->update($table, array(
+			// 		'status' => 0
+			// 	), array(
+			// 		'id' => $dependency_id,
+			// 	), array(
+			// 		'%d'
+			// 	), array(
+			// 		'%d'
+			// 	));
+			//
+			// } else if ($row->status === '2') {
+			//
+			// 	$wpdb->delete($table, array(
+		 	// 		'id' => $dependency_id,
+		 	// 	), array(
+		 	// 		'%d'
+		 	// 	));
+			//
+			// }
 
-			$this->remove_expired_url($url);
 
-			// header("Location: $full_url");
-			// die();
+			wp_redirect(add_query_arg(array('cache' => '1'), home_url($url)));
+			exit;
 
-			$output['url'] = $url;
-			$output['full_url'] = $full_url;
 
-		} else {
+			 // $base = trim(substr($_SERVER['REQUEST_URI'], 0, strpos($_SERVER['REQUEST_URI'], 'wp-admin/admin-ajax.php')), '/'); //: "/contrechamps/wp-admin/admin-ajax.php"
+			 //
+			 // $output['base'] = $base;
 
-			$output['error'] = 'url not set';
+ // 			$this->file_manager->erase_dir('html/'.$base.'/'.$url, 'index.html');
+ //
+ // 			// $output['erase_dir'] = 'html/'.$base.'/'.$url. '/index.html';
+ // 			// $output['server'] = $_SERVER;
+ //
+ // // ob_start();
+ // // 			$ch = curl_init();
+ // // 			curl_setopt($ch, CURLOPT_URL, trim($full_url).'/cache=1');
+ // // 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+ // // 			curl_exec($ch);
+ // // 			curl_close($ch);
+ // //
+ // // $output['ob'] = ob_get_clean();
+ //
+			 // $this->remove_expired_url($url);
 
-		}
+			 // header("Location: $full_url");
+			 // die();
 
-		echo json_encode($output);
-		exit;
+			 // $output['dependency_id'] = $dependency_id;
+			 // $output['url'] = $row->url;
+			 // $output['full_url'] = $full_url;
 
-	}
+		 } else {
+
+			 $output['error'] = 'url not set';
+
+		 }
+
+		 echo json_encode($output);
+		 exit;
+
+	 }
+
+// 	public function ajax_regenerate_url() {
+// 		global $karma;
+//
+// 		$output = array();
+//
+// 		if (isset($_POST['url'])) {
+//
+// 			$url = $_POST['url'];
+// 			$full_url = home_url($url);
+//
+// 			$base = trim(substr($_SERVER['REQUEST_URI'], 0, strpos($_SERVER['REQUEST_URI'], 'wp-admin/admin-ajax.php')), '/'); //: "/contrechamps/wp-admin/admin-ajax.php"
+//
+// 			$output['base'] = $base;
+//
+// // 			$this->file_manager->erase_dir('html/'.$base.'/'.$url, 'index.html');
+// //
+// // 			// $output['erase_dir'] = 'html/'.$base.'/'.$url. '/index.html';
+// // 			// $output['server'] = $_SERVER;
+// //
+// // // ob_start();
+// // // 			$ch = curl_init();
+// // // 			curl_setopt($ch, CURLOPT_URL, trim($full_url).'/cache=1');
+// // // 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+// // // 			curl_exec($ch);
+// // // 			curl_close($ch);
+// // //
+// // // $output['ob'] = ob_get_clean();
+// //
+// 			$this->remove_expired_url($url);
+//
+// 			// header("Location: $full_url");
+// 			// die();
+//
+// 			$output['url'] = $url;
+// 			$output['full_url'] = trim($full_url, '/') . '/';
+//
+// 		} else {
+//
+// 			$output['error'] = 'url not set';
+//
+// 		}
+//
+// 		echo json_encode($output);
+// 		exit;
+//
+// 	}
 
 	/**
 	 *  add_expired_urls
 	 */
-	function add_expired_urls($urls) {
-		global $karma;
-
-		$karma->options->update_option('karma_cache_expired_url', array_merge(
-			$karma->options->get_option('karma_cache_expired_url', array()),
-			$urls
-		));
-
-	}
-
-	/**
-	 * remove_expired_url
-	 */
-	function remove_expired_url($url) {
-		global $karma;
-
-		$urls = $karma->options->get_option('karma_cache_expired_url', array());
-
-		$index = array_search($url, $urls);
-
-		if ($index !== null) {
-
-			array_splice($urls, $index, 1);
-
-		}
-
-		$karma->options->update_option('karma_cache_expired_url', $urls);
-
-	}
+	// function add_expired_urls($urls) {
+	// 	global $karma;
+	//
+	// 	$karma->options->update_option('karma_cache_expired_url', array_merge(
+	// 		$karma->options->get_option('karma_cache_expired_url', array()),
+	// 		$urls
+	// 	));
+	//
+	// }
+	//
+	// /**
+	//  * remove_expired_url
+	//  */
+	// function remove_expired_url($url) {
+	// 	global $karma;
+	//
+	// 	$urls = $karma->options->get_option('karma_cache_expired_url', array());
+	//
+	// 	$index = array_search($url, $urls);
+	//
+	// 	if ($index !== null) {
+	//
+	// 		array_splice($urls, $index, 1);
+	//
+	// 	}
+	//
+	// 	$karma->options->update_option('karma_cache_expired_url', $urls);
+	//
+	// }
 
 
 	/**
@@ -569,7 +868,9 @@ Class Karma_Cache {
 		//
 		// $this->add_expired_urls($urls);
 
-		$this->delete_object('post', '', $term->term_id);
+		$post = get_post($post_id);
+
+		$this->delete_object('post', $post->post_type, $post_id);
 
 	}
 
@@ -637,23 +938,27 @@ Class Karma_Cache {
 
 		$table = $wpdb->prefix.$this->dependency_table;
 
-		$urls = $wpdb->get_col($wpdb->prepare(
-			"SELECT url FROM $table WHERE object = %s AND type = %s",
+
+		// $wpdb->update($table, array(
+		// 	'status' => 1
+		// ), array(
+		// 	'object' => $object,
+		// 	'type' => $type
+		// ), array(
+		// 	'%d'
+		// ), array(
+		// 	'%s',
+		// 	'%s'
+		// ));
+
+		$wpdb->query($wpdb->prepare(
+			"UPDATE $table
+			SET status = %d
+			WHERE object = %s AND type = %s",
+			1,
 			$object,
 			$type
 		));
-
-
-		if ($update) {
-
-			$urls = $wpdb->get_col($wpdb->prepare("SELECT url FROM $table WHERE object = 'post' AND object_id = %d", $post_id));
-
-		} else {
-
-
-		}
-
-		$this->add_expired_urls($urls);
 
 	}
 
@@ -665,13 +970,28 @@ Class Karma_Cache {
 
 		$table = $wpdb->prefix.$this->dependency_table;
 
-		$urls = $wpdb->get_col($wpdb->prepare(
-			"SELECT url FROM $table WHERE object = %s AND object_id = %d",
+		// $wpdb->update($table, array(
+		// 	'status' => 1
+		// ), array(
+		// 	'object' => $object,
+		// 	'object_id' => $id
+		// ), array(
+		// 	'%d'
+		// ), array(
+		// 	'%s',
+		// 	'%d'
+		// ));
+
+		$wpdb->query($wpdb->prepare(
+			"UPDATE $table
+			SET status = %d
+			WHERE object = %s AND (object_id = %d OR type = %s AND context = '*')",
+			1,
 			$object,
-			$id
+			$id,
+			$type
 		));
 
-		$this->add_expired_urls($urls);
 
 	}
 
@@ -683,21 +1003,30 @@ Class Karma_Cache {
 
 		$table = $wpdb->prefix.$this->dependency_table;
 
-		$urls = $wpdb->get_col($wpdb->prepare(
-			"SELECT url FROM $table WHERE object = %s AND object_id = %d",
+
+		// $wpdb->update($table, array(
+		// 	'status' => '2'
+		// ), array(
+		// 	'object' => $object,
+		// 	'object_id' => $id
+		// ), array(
+		// 	'%d'
+		// ), array(
+		// 	'%s',
+		// 	'%d'
+		// ));
+
+
+		$wpdb->query($wpdb->prepare(
+			"UPDATE $table
+			SET status = %d
+			WHERE object = %s AND (object_id = %d OR type = %s AND context = '*')",
+			2,
 			$object,
-			$id
+			$id,
+			$type
 		));
 
-		$wpdb->delete($table, array(
-			'object' => $object,
-			'object_id' => $id
-		), array(
-			'%s',
-			'%d'
-		));
-
-		$this->add_expired_urls($urls);
 
 	}
 
@@ -763,7 +1092,7 @@ Class Karma_Cache {
 		global $wp_scripts;
 
 		$key = implode(',', $scripts);
-		$js_filename = md5($key) . '.js';
+		// $js_filename = md5($key) . '.js';
 		$l10n = '';
 		$js = '';
 
@@ -783,51 +1112,42 @@ Class Karma_Cache {
 
 		}
 
-		if ($internal || !$this->file_manager->file_exists('js', $js_filename)) {
+		foreach ($scripts as $handle) {
 
-			foreach ($scripts as $handle) {
+			$script_src = $wp_scripts->registered[$handle]->src;
 
-				$script_src = $wp_scripts->registered[$handle]->src;
+			if (strpos($script_src, WP_CONTENT_URL) === 0) {
 
-				if (strpos($script_src, WP_CONTENT_URL) === 0) {
+				$script_file = str_replace(WP_CONTENT_URL, WP_CONTENT_DIR, $script_src);
 
-					$script_file = str_replace(WP_CONTENT_URL, WP_CONTENT_DIR, $script_src);
+				$js .= "\n/*** $handle ***/\n" . file_get_contents($script_file) . "\n";
 
-					$js .= "\n\n\n/**************** $handle ***************/\n\n\n" . file_get_contents($script_file) . "\n";
+			} else {
 
-				} else {
-
-					echo '<script type="text/javascript" src="'.$script_src.'?t='.time().'"></script>';
-
-				}
-
-			}
-
-			if ($js) {
-
-				require_once get_template_directory() . '/modules/html-cache/jshrink/minifier.php';
-
-				// $js = JShrink\Minifier::minify($js);
-
-				if ($internal) {
-
-					echo '<script type="text/javascript">'."\n".$js."\n".'</script>';
-
-				} else {
-
-					$this->file_manager->write_file('js', $js_filename, $js);
-
-				}
+				echo '<script type="text/javascript" src="'.$script_src.'?t='.time().'"></script>';
 
 			}
 
 		}
 
-		if (!$internal && $this->file_manager->file_exists('js', $js_filename)) {
+		if ($js) {
 
-			$js_src = $this->file_manager->get_url('js', $js_filename);
+			//require_once get_template_directory() . '/modules/html-cache/jshrink/minifier.php';
+			// $js = JShrink\Minifier::minify($js);
 
-			echo '<script type="text/javascript" src="'.$js_src.'?t='.time().'"></script>';
+			if ($internal) {
+
+				echo '<script type="text/javascript">'."\n".$js."\n".'</script>';
+
+			} else {
+
+				// $this->file_manager->write_file('js', $js_filename, $js);
+
+				$this->file_manager->write_file('html/'.$this->dir, 'script.js', $js);
+
+				echo '<script type="text/javascript" src="script.js"></script>';
+
+			}
 
 		}
 

@@ -24,7 +24,7 @@ class Karma_Task_Manager {
 	function admin_enqueue_scripts( $hook ) {
 		global $karma;
 
-	  wp_enqueue_script('task-manager', get_template_directory_uri() . '/modules/task-manager/js/task-manager.js', array('ajax'), $karma->version, true);
+	  wp_enqueue_script('task-manager', get_template_directory_uri() . '/modules/task-manager/js/task-manager.js', array('ajax', 'custom-dispatcher'), $karma->version, true);
 
 		wp_localize_script('task-manager', 'KarmaTaskManager', array(
 			'ajax_url' => admin_url('admin-ajax.php')
