@@ -341,7 +341,7 @@ Class Karma_Cache {
 	}
 
 	/**
-	 * @hook karma_cache_add_dependency_id
+	 * @hook karma_cache_add_dependency_ids
 	 */
 	public function add_dependency_ids($object, $ids, $type = null) {
 
@@ -1124,7 +1124,7 @@ Class Karma_Cache {
 
 			} else {
 
-				echo '<script type="text/javascript" src="'.$script_src.'?t='.time().'"></script>';
+				echo '<script type="text/javascript" src="'.$script_src.'"></script>';
 
 			}
 

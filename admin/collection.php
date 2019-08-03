@@ -37,7 +37,7 @@ class Karma_Collection {
 
 		foreach ($this->items as $item) {
 
-			if (isset($item->$key) && $item->$key === $value) {
+			if (isset($item->$key) && (is_array($item->$key) && in_array($value, $item->$key) || $item->$key === $value)) {
 
 				$collection->items[] = $item;
 
@@ -56,7 +56,19 @@ class Karma_Collection {
 
 			if (isset($item->$key)) {
 
-				$groups[$item->$key][] = $item;
+				if (is_array($item->$key)) {
+
+					foreach ($item->$key as $value) {
+
+						$groups[$value][] = $item;
+
+					}
+
+				} else {
+
+					$groups[$item->$key][] = $item;
+
+				}
 
 			}
 

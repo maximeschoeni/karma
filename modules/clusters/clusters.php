@@ -26,7 +26,9 @@ class Karma_Clusters {
 
 		// add_action('wp_insert_post', array($this, 'on_save'), 99, 3);
 
-
+		add_action('karma_cluster_create_object', array($this, 'create_object'), 10, 3);
+		add_action('karma_cluster_update_object', array($this, 'update_object'), 10, 3);
+		add_action('karma_cluster_delete_object', array($this, 'delete_object'), 10, 3);
 
 		add_action('wp_ajax_get_cluster', array($this, 'ajax_get_cluster'));
 		add_action('wp_ajax_nopriv_get_cluster', array($this, 'ajax_get_cluster'));

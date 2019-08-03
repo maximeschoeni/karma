@@ -28,16 +28,29 @@ Class Karma_Cache_Mod_Rewrite {
 
 		}
 
+		// $rules = array(
+		// 	'<IfModule mod_rewrite.c>',
+		// 	'RewriteEngine On',
+		// 	'RewriteBase '.$home_root,
+		// 	'RewriteCond %{QUERY_STRING} =""',
+		// 	'RewriteCond %{DOCUMENT_ROOT}'.$home_root.'wp-content/cache/html%{REQUEST_URI} -f [OR]',
+		// 	'RewriteCond %{DOCUMENT_ROOT}'.$home_root.'wp-content/cache/html%{REQUEST_URI} -d',
+		// 	'RewriteRule ^.*$ '.$home_root.'wp-content/cache/html%{REQUEST_URI} [L]',
+		// 	'</IfModule>'
+		// );
+
 		$rules = array(
 			'<IfModule mod_rewrite.c>',
 			'RewriteEngine On',
 			'RewriteBase '.$home_root,
 			'RewriteCond %{QUERY_STRING} =""',
-			'RewriteCond %{DOCUMENT_ROOT}'.$home_root.'wp-content/cache/html%{REQUEST_URI} -f [OR]',
-			'RewriteCond %{DOCUMENT_ROOT}'.$home_root.'wp-content/cache/html%{REQUEST_URI} -d',
+			'RewriteCond %{DOCUMENT_ROOT}/arcoop/wp-content/cache/html%{REQUEST_URI} -f [OR]',
+			'RewriteCond %{DOCUMENT_ROOT}/arcoop/wp-content/cache/html%{REQUEST_URI}index.html -f [OR]',
+			'RewriteCond %{DOCUMENT_ROOT}/arcoop/wp-content/cache/html%{REQUEST_URI}/index.html -f',
 			'RewriteRule ^.*$ '.$home_root.'wp-content/cache/html%{REQUEST_URI} [L]',
 			'</IfModule>'
 		);
+
 
 		$this->remove(); // just in case
 

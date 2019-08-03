@@ -65,6 +65,7 @@ class Karma_Cluster_Dependencies {
 		), array(
 			'%d',
 			'%s',
+			'%s',
 			'%s'
 		));
 
