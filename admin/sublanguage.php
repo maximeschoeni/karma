@@ -19,7 +19,9 @@ class Karma_Sublanguage {
 
 		}
 
-		add_filter('karma_append_language_to_path', array($this, 'append_language_to_path'));
+		add_filter('karma_append_language_to_path', array($this, 'append_language_to_path'), 10, 2);
+
+		add_filter('karma_cluster_path', array($this, 'append_language_to_path'), 10, 2);
 
 		add_filter('karma_html_cache_url', array($this, 'append_language_to_query'));
 		add_filter('karma_cluster_link_raw', array($this, 'append_language_to_query'));
@@ -33,14 +35,14 @@ class Karma_Sublanguage {
 	/**
 	 * @filter 'karma_append_language_to_url'
 	 */
-	public function append_language_to_path($path) {
+	public function append_language_to_path($path, $post_type = null) {
 		global $sublanguage, $sublanguage_admin;
 
-		if (isset($sublanguage_admin) && (!$sublanguage_admin->is_default() || $sublanguage_admin->get_option('show_slug'))) {
+		if (isset($sublanguage_admin) && $post_type && $sublanguage_admin->is_post_type_translatable($post_type) && (!$sublanguage_admin->is_default() || $sublanguage_admin->get_option('show_slug'))) {
 
 			$language = $sublanguage_admin->get_language();
 
-		} else if (isset($sublanguage) && (!$sublanguage->is_default() || $sublanguage->get_option('show_slug'))) {
+		} else if (isset($sublanguage) && $post_type && $sublanguage->is_post_type_translatable($post_type) && (!$sublanguage->is_default() || $sublanguage->get_option('show_slug'))) {
 
 			$language = $sublanguage->get_language();
 

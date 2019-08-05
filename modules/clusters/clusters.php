@@ -33,6 +33,8 @@ class Karma_Clusters {
 		add_action('wp_ajax_get_cluster', array($this, 'ajax_get_cluster'));
 		add_action('wp_ajax_nopriv_get_cluster', array($this, 'ajax_get_cluster'));
 
+		add_action('wp_ajax_karma_clusters_update_all', array($this, 'ajax_update_all'));
+
 		add_filter('karma_task', array($this, 'add_task'));
 		add_action('wp_ajax_clusters_update', array($this, 'ajax_clusters_update'));
 
@@ -58,9 +60,12 @@ class Karma_Clusters {
 		// add_action('wp_loaded', array($this, 'update_dependencies'));
 		// add_action('redirect_post_location', array($this, 'redirect'));
 
-
+		add_action( 'admin_bar_menu', array($this, 'add_toolbar_button'), 999);
 
 	}
+
+
+
 
 	/**
 	 * @hook 'init'
@@ -98,25 +103,19 @@ class Karma_Clusters {
 	/**
 	 * create_cluster
 	 */
-	public function create_cluster($post) {
+	public function create_cluster($post_id, $post_type) {
 
 		$cluster = new stdClass();
 
-		if (isset($this->post_types[$post->post_type]) && is_callable($this->post_types[$post->post_type])) {
+		require_once get_template_directory() . '/modules/clusters/dependencies.php';
 
-			require_once get_template_directory() . '/modules/clusters/dependencies.php';
+		$dependencies = new Karma_Cluster_Dependencies($post_id, $this->dependency_table);
 
-			$dependencies = new Karma_Cluster_Dependencies($post->ID, $this->dependency_table);
+		$dependencies->add_id('post', $post_id);
 
-			$dependencies->add_post_id($post->ID);
+		$this->update_cache($post_id, $post_type, $cluster);
 
-			$this->current_dependencies = $dependencies;
-
-			call_user_func($this->post_types[$post->post_type], $cluster, $post, $dependencies, $this);
-
-			// -> html cache
-			// do_action('karma_cluster_save', $post, $cluster, $this);
-		}
+		do_action('karma_cluster_create_object', 'cluster', $post_type, $post_id);
 
 		return $cluster;
 	}
@@ -130,25 +129,31 @@ class Karma_Clusters {
 
 		if ($post) {
 
-			$current = $this->get_cache($post_id);
+			$cluster = $this->get_cache($post_id, $post->post_type);
 
-			$cluster = $this->create_cluster($post);
-			$this->update_cache($post->ID, $cluster);
+			if (!$cluster) {
 
-			if ($current) {
-
-				do_action('karma_cluster_update_object', 'cluster', $post->post_type, $post_id);
-
-			} else {
-
-				do_action('karma_cluster_create_object', 'cluster', $post->post_type, $post_id);
+				$cluster = $this->create_cluster($post_id, $post->post_type);
 
 			}
 
-			// -> sublanguage
-			// do_action('karma_cluster_update', $post, $cluster, $this);
+			if (isset($this->post_types[$post->post_type]) && is_callable($this->post_types[$post->post_type])) {
 
-			return $cluster;
+				require_once get_template_directory() . '/modules/clusters/dependencies.php';
+
+				$dependencies = new Karma_Cluster_Dependencies($post_id, $this->dependency_table);
+
+				$dependencies->add_id('post', $post_id);
+
+				call_user_func($this->post_types[$post->post_type], $cluster, $post, $dependencies, $this);
+
+			}
+
+			$this->update_cache($post->ID, $post->post_type, $cluster);
+
+			do_action('karma_cluster_update_object', 'cluster', $post->post_type, $post_id);
+
+			// return $cluster;
 
 		} else {
 
@@ -159,6 +164,71 @@ class Karma_Clusters {
 		}
 
 	}
+
+
+
+	/**
+	 * create_cluster
+	 */
+	// public function create_cluster($post) {
+	//
+	// 	$cluster = new stdClass();
+	//
+	// 	if (isset($this->post_types[$post->post_type]) && is_callable($this->post_types[$post->post_type])) {
+	//
+	// 		require_once get_template_directory() . '/modules/clusters/dependencies.php';
+	//
+	// 		$dependencies = new Karma_Cluster_Dependencies($post->ID, $this->dependency_table);
+	//
+	// 		$dependencies->add_post_id($post->ID);
+	//
+	// 		$this->current_dependencies = $dependencies;
+	//
+	// 		call_user_func($this->post_types[$post->post_type], $cluster, $post, $dependencies, $this);
+	//
+	// 	}
+	//
+	// 	return $cluster;
+	// }
+	//
+	// /**
+	//  * update_cluster
+	//  */
+	// public function update_cluster($post_id) {
+	//
+	// 	$post = get_post($post_id);
+	//
+	// 	if ($post) {
+	//
+	// 		$current = $this->get_cache($post_id, $post->post_type);
+	//
+	// 		$cluster = $this->create_cluster($post);
+	// 		$this->update_cache($post->ID, $post->post_type, $cluster);
+	//
+	// 		if ($current) {
+	//
+	// 			do_action('karma_cluster_update_object', 'cluster', $post->post_type, $post_id);
+	//
+	// 		} else {
+	//
+	// 			do_action('karma_cluster_create_object', 'cluster', $post->post_type, $post_id);
+	//
+	// 		}
+	//
+	// 		// -> sublanguage
+	// 		// do_action('karma_cluster_update', $post, $cluster, $this);
+	//
+	// 		return $cluster;
+	//
+	// 	} else {
+	//
+	// 		$this->delete_cache($post_id);
+	//
+	// 		do_action('karma_cluster_delete_object', 'cluster', '', $post_id);
+	//
+	// 	}
+	//
+	// }
 
 	/**
 	 * ONLY FOR TEST !
@@ -178,29 +248,35 @@ class Karma_Clusters {
 	/**
 	 * @return Cluster or null
 	 */
-	public function get_cluster($id) {
+	public function get_cluster($id, $post_type) {
 
-		$cluster = $this->get_cache($id);
+		$cluster = $this->get_cache($id, $post_type);
 
 		if (!$cluster) {
 
-			$cluster = $this->update_cluster($id);
+			$this->update_cluster($id);
 
-			// $post = get_post($id);
-			//
-			// if ($post) {
-			//
-			// 	$cluster = $this->update_cluster($post);
-			//
-			// } else {
-			//
-			// 	$this->delete_cache($id);
-			//
-			// }
+			$cluster = $this->get_cache($id, $post_type);
 
 		}
 
 		return $cluster;
+	}
+
+	/**
+	 * get clusters from array of ids
+	 */
+	public function get_clusters($ids, $post_type) {
+
+		$clusters = array();
+
+		foreach ($ids as $id) {
+
+			$clusters[] = $this->get_cluster($id, $post_type);
+
+		}
+
+		return $clusters;
 	}
 
 	/**
@@ -273,9 +349,11 @@ class Karma_Clusters {
 	/**
 	 * update cache
 	 */
-	public function update_cache($post_id, $data) {
+	public function update_cache($post_id, $post_type, $data) {
 
-		$this->file_manager->write_file(apply_filters('karma_append_language_to_path', $post_id), 'data.json', json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+		$cluster_path = apply_filters('karma_cluster_path', $post_id, $post_type);
+
+		$this->file_manager->write_file($cluster_path, 'data.json', json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
 	}
 
@@ -291,9 +369,11 @@ class Karma_Clusters {
 	/**
 	 * update cache
 	 */
-	public function get_cache($post_id) {
+	public function get_cache($post_id, $post_type) {
 
-		$data = $this->file_manager->read_file(apply_filters('karma_append_language_to_path', $post_id), 'data.json');
+		$cluster_path = apply_filters('karma_cluster_path', $post_id, $post_type);
+
+		$data = $this->file_manager->read_file($cluster_path, 'data.json');
 
 		if ($data) {
 
@@ -307,12 +387,14 @@ class Karma_Clusters {
 	/**
 	 * Get page link to fetch json
 	 */
-	public function get_cluster_link($post_id) {
+	public function get_cluster_link($post_id, $post_type) {
 		global $wp_object_cache, $sublanguage;
 
-		if ($this->file_manager->file_exists(apply_filters('karma_append_language_to_path', $post_id), 'data.json')) {
+		$cluster_path = apply_filters('karma_cluster_path', $post_id, $post_type);
 
-			return $this->file_manager->get_url(apply_filters('karma_append_language_to_path', $post_id), 'data.json');
+		if ($this->file_manager->file_exists($cluster_path, 'data.json')) {
+
+			return $this->file_manager->get_url($cluster_path, 'data.json');
 
 		} else {
 
@@ -326,6 +408,22 @@ class Karma_Clusters {
 	}
 
 	/**
+	 * get cluster links from array of ids
+	 */
+	public function get_cluster_links($ids, $post_type) {
+
+		$links = array();
+
+		foreach ($ids as $id) {
+
+			$links[] = $this->get_cluster_link($id, $post_type);
+
+		}
+
+		return $links;
+	}
+
+	/**
 	 * @ajax 'get_cluster'
 	 */
 	public function ajax_get_cluster() {
@@ -333,7 +431,9 @@ class Karma_Clusters {
 		if (isset($_GET['id'])) {
 
 			$post_id = intval($_GET['id']);
-			$cluster = $this->get_cluster($post_id);
+			$post_type = esc_attr($_GET['post_type']);
+
+			$cluster = $this->get_cluster($post_id, $post_type);
 
 			if ($cluster) {
 
@@ -369,12 +469,15 @@ class Karma_Clusters {
 		if (isset($_POST['target_id'])) {
 
 			$target_id = intval($_POST['target_id']);
+			$post_type = esc_attr($_POST['post_type']);
 			// $dependencies = $karma->options->get_option('expired_clusters');
 
 			$output['target_id'] = $target_id;
 			// $output['dependencies'] = $dependencies;
 
-			$output['cluster'] = $this->update_cluster($target_id);
+			$this->update_cluster($target_id);
+
+			$output['cluster'] = $this->get_cluster($target_id, $post_type);
 
 			$table = $wpdb->prefix.$this->dependency_table;
 
@@ -553,29 +656,6 @@ class Karma_Clusters {
 	 */
 	public function add_task($tasks) {
 		global $wpdb;
-		// global $karma;
-		//
-		// $ids = $karma->options->get_option('expired_clusters', array());
-		//
-		// if ($ids) {
-		//
-		// 	$items = array();
-		//
-		// 	foreach ($ids as $id) {
-		//
-		// 		$items[] = array(
-		// 			'id' => $id
-		// 		);
-		//
-		// 	}
-		//
-		// 	$tasks[] = array(
-		// 		'name' => 'Clusters',
-		// 		'items' => $items,
-		// 		'task' => 'clusters_update'
-		// 	);
-		//
-		// }
 
 		$table = $wpdb->prefix.$this->dependency_table;
 
@@ -616,18 +696,22 @@ class Karma_Clusters {
 	}
 
 	/**
-	 * @ajax 'clusters_get_dependencies'
+	 * @ajax 'karma_clusters_update_all'
 	 */
-	// public function ajax_clusters_get_dependences() {
-	// 	global $karma;
-	//
-	// 	$output = array_keys($karma->options->get_option('dependences'));
-	//
-	// 	echo json_encode($output);
-	//
-	// 	exit;
-	//
-	// }
+	public function ajax_update_all() {
+		global $wpdb;
+
+		$table = $wpdb->prefix.$this->dependency_table;
+
+		$wpdb->query($wpdb->prepare(
+			"UPDATE $table SET status = %d",
+			1
+		));
+
+		echo json_encode($output);
+		exit;
+
+	}
 
 
 	/**
@@ -724,7 +808,15 @@ class Karma_Clusters {
 
 		} else {
 
+			if (isset($this->post_types[$post->post_type])) {
+
+				$this->create_cluster($post->ID, $post->post_type);
+
+			}
+
 			$this->create_object('post', $post->post_type);
+
+
 
 			// $dependencies = $wpdb->get_col($wpdb->prepare("SELECT target_id FROM $table WHERE object = 'post' AND type = %s", $post->post_type));
 
@@ -1004,6 +1096,26 @@ class Karma_Clusters {
 
 	}
 
+	/**
+	 * @callbak 'admin_bar_menu'
+	 */
+	public function add_toolbar_button( $wp_admin_bar ) {
+
+		if (current_user_can('manage_options')) {
+
+			$wp_admin_bar->add_node(array(
+				'id'    => 'update-clusters',
+				'title' => 'Update Clusters',
+				'href'  => '#',
+				'meta'  => array(
+					'onclick' => 'ajaxGet(KarmaTaskManager.ajax_url, {action: "karma_clusters_update_all"}, function(results) {KarmaTaskManager.update();});'
+				)
+			));
+
+		}
+
+	}
+
 
 
 }
@@ -1012,16 +1124,28 @@ global $karma_clusters;
 $karma_clusters = new Karma_Clusters;
 
 
-function karma_get_cluster($post_id) {
+function karma_get_cluster($post_id, $post_type = null) {
 	global $karma_clusters;
 
-	return $karma_clusters->get_cluster($post_id);
+	return $karma_clusters->get_cluster($post_id, $post_type);
 }
 
-function karma_get_cluster_link($post_id) {
+function karma_get_clusters($post_ids, $post_type = null) {
 	global $karma_clusters;
 
-	return $karma_clusters->get_cluster_link($post_id);
+	return $karma_clusters->get_clusters($post_ids, $post_type);
+}
+
+function karma_get_cluster_link($post_id, $post_type = null) {
+	global $karma_clusters;
+
+	return $karma_clusters->get_cluster_link($post_id, $post_type);
+}
+
+function karma_get_cluster_links($post_ids, $post_type = null) {
+	global $karma_clusters;
+
+	return $karma_clusters->get_cluster_links($post_ids, $post_type);
 }
 
 function karma_register_cluster($post_type, $callback) {
