@@ -1,4 +1,6 @@
 
+console.log("hjozulogvzuio");
+
 
 function createChildrenManager(container) {
 	var manager = {
@@ -87,7 +89,6 @@ function buildChildrenTable(manager) {
 			dateManager.onUpdate = function(date) {
 				item.start_date = Calendar.format(date);
 			}
-			dateManager.init();
 
 			var row = build("tr.child-row",
 				build("td.child-cell.date",

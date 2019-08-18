@@ -70,6 +70,12 @@ function createMediaPlayer() {
 		if (!this.current && this.items.length) {
 			this.current = this.items[0];
 		}
+		this.getItems("isRender", true).items.forEach(function(slide) {
+			if (player.onRemove) {
+				player.onRemove(slide);
+			}
+			slide.isRender = false;
+		})
 		this.offset = 0;
 		if (this.onInit) {
 			this.onInit();

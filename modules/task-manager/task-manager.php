@@ -28,7 +28,7 @@ class Karma_Task_Manager {
 
 		wp_localize_script('task-manager', 'KarmaTaskManager', array(
 			'ajax_url' => admin_url('admin-ajax.php'),
-			'prod' => current_user_can('manage_options') ? 0 : 1
+			'is_admin' => current_user_can('manage_options') ? 1 : 0
 		));
 
 	}

@@ -21,6 +21,8 @@ class Karma_Collection {
 
 		foreach ($this->items as $item) {
 
+			$item = (object) $item;
+
 			if (isset($item->$key) && $item->$key === $value) {
 
 				return $item;
@@ -36,6 +38,8 @@ class Karma_Collection {
 		$collection = new Karma_Collection();
 
 		foreach ($this->items as $item) {
+
+			$item = (object) $item;
 
 			if (isset($item->$key) && (is_array($item->$key) && in_array($value, $item->$key) || $item->$key === $value)) {
 
@@ -54,6 +58,8 @@ class Karma_Collection {
 
 		foreach ($this->items as $item) {
 
+			$item = (object) $item;
+			
 			if (isset($item->$key)) {
 
 				if (is_array($item->$key)) {

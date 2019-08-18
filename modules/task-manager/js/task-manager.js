@@ -7,7 +7,7 @@ KarmaTaskManager.getTask = function(callback) {
 	ajaxGet(KarmaTaskManager.ajax_url, {
 		action: "karma_get_task"
 	}, function(results) {
-		if (!KarmaTaskManager.prod) {
+		if (KarmaTaskManager.is_admin) {
 			console.log(results);
 		}
 		callback(results);
@@ -15,12 +15,13 @@ KarmaTaskManager.getTask = function(callback) {
 };
 KarmaTaskManager.resolveTask = function(subTask, callback) {
 	var index = 0;
+
 	KarmaTaskManager.onStart && KarmaTaskManager.onStart(subTask.name, subTask.items.length);
 	function loop() {
 		if (index < subTask.items.length) {
 			KarmaTaskManager.onUpdate && KarmaTaskManager.onUpdate(subTask.name, subTask.items.length, index);
 			var data = subTask.items[index];
-			if (!KarmaTaskManager.prod) {
+			if (KarmaTaskManager.is_admin) {
 				console.log(data);
 			}
 			data.action = subTask.task;
@@ -31,7 +32,7 @@ KarmaTaskManager.resolveTask = function(subTask, callback) {
 			// });
 
 			Ajax.send(KarmaTaskManager.ajax_url, Ajax.createQuery(data), 'POST', function(results) {
-				if (!KarmaTaskManager.prod) {
+				if (KarmaTaskManager.is_admin) {
 					try {
 	   				var json = JSON.parse(results);
 						console.log(json);

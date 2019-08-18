@@ -1,0 +1,63 @@
+table.media-box-table {
+	border-collapse: collapse;
+	border-spacing: 0;
+	width: 100%;
+	table-layout: fixed;
+}
+table.media-box-table tbody tr {
+	height: 90px;
+}
+table.media-box-table td {
+	cursor: move;
+}
+table.media-box-table td,
+table.media-box-table th {
+	width: 150px;
+	box-sizing:border-box;
+}
+table.media-box-table td.type,
+table.media-box-table th.type {
+	width: 120px;
+}
+table.media-box-table td.value,
+table.media-box-table th.value {
+	width: auto;
+}
+table.media-box-table td.remove,
+table.media-box-table th.remove {
+	width: 55px;
+
+}
+
+
+table.media-box-table td.remove {
+	text-align: right;
+}
+
+table.media-box-table .media-box-gallery {
+	/* display: flex; */
+	height: 70px;
+	overflow: hidden;
+}
+table.media-box-table .media-box-gallery img,
+table.media-box-table .media-box-image img {
+	height: 70px;
+	width: auto;
+	cursor: pointer;
+	float:left;
+}
+table.media-box-table textarea {
+	resize: none;
+	height: 61px;
+	width: 100%;
+	padding: 5px;
+	box-sizing: border-box;
+}
+table.media-box-table input.text {
+	padding: 5px;
+	box-sizing: border-box;
+	width: 100%;
+}
+.karma-multimedia button.add-media {
+	margin-top: 1em;
+}

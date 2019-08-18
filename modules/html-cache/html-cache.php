@@ -360,7 +360,7 @@ Class Karma_Cache {
 		$this->save_dependencies($url);
 
 		$this->files['index.html'] = $content;
-		$this->files['dependencies.json'] = json_encode($this->dependencies, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+		// $this->files['dependencies.json'] = json_encode($this->dependencies, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
 		// file_put_contents(ABSPATH . '/' . $this->request_url . '/index.html', $content);
 		// file_put_contents(ABSPATH . '/' . $this->request_url . '/dependencies.json', json_encode($this->dependencies, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
@@ -449,6 +449,73 @@ Class Karma_Cache {
 
 		file_put_contents($path . '/cache-info.json', json_encode($cache_info, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
+	}
+
+	/**
+	 * Remove all cache content
+	 */
+	public function remove_cache() {
+		global $wpdb;
+
+		$table = $wpdb->prefix.$this->dependency_table;
+
+		$wpdb->query("DELETE FROM $table");
+
+		$this->rrmdir(ABSPATH);
+
+	}
+
+	/**
+	 * Remove all cache content
+	 */
+	private function rrmdir($path) {
+
+		$path = rtrim($path, '/');
+
+		$file_info = $path . '/cache-info.json';
+
+		if (file_exists($file_info)) {
+
+			$info = json_decode(file_get_contents($file_info));
+
+			if (isset($info->dir) && is_array($info->dir)) {
+
+				foreach ($info->dir as $dir) {
+
+					$child_path = $path . '/' . $dir;
+
+					if (is_dir($child_path)) {
+
+						$this->rrmdir($child_path);
+
+						rmdir($child_path);
+
+					}
+
+				}
+
+			}
+
+			if (isset($info->files) && is_array($info->files)) {
+
+				foreach ($info->files as $file) {
+
+					$file_path = $path . '/' . $file;
+
+					if (file_exists($file_path)) {
+
+						unlink($file_path);
+
+					}
+
+				}
+
+			}
+
+			// var_dump($file_info);
+			unlink($file_info);
+
+		}
 
 	}
 
@@ -1222,23 +1289,25 @@ Class Karma_Cache {
 		//
 		// $mod_rewrite = new Karma_Cache_Mod_Rewrite();
 		//
-		// if ($karma->options->get_option('html_cache')) {
-		//
-		// 	if (!$html_cache) {
-		//
-		// 		$mod_rewrite->remove();
-		//
-		// 	}
-		//
-		// } else {
-		//
-		// 	if ($html_cache) {
-		//
-		// 		$mod_rewrite->add();
-		//
-		// 	}
-		//
-		// }
+		if ($karma->options->get_option('html_cache')) {
+
+			if (!$html_cache) {
+
+				$this->remove_cache();
+
+				//$mod_rewrite->remove();
+
+			}
+
+		} else {
+
+			if ($html_cache) {
+
+				// $mod_rewrite->add();
+
+			}
+
+		}
 
 		$karma->options->update_option('html_cache', $html_cache);
 
@@ -1482,7 +1551,7 @@ Class Karma_Cache {
 				'title' => 'Update HTML Cache',
 				'href'  => '#',
 				'meta'  => array(
-					'onclick' => 'ajaxGet(KarmaTaskManager.ajax_url, {action: "karma_cache_update_all"}, function(results) {KarmaTaskManager.update();});'
+					'onclick' => 'ajaxGet(KarmaTaskManager.ajax_url, {action: "karma_cache_update_all"}, function(results) {KarmaTaskManager.update();});event.preventDefault();'
 				)
 			));
 

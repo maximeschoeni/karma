@@ -27,9 +27,14 @@ class Karma_Subevent {
 
 		if (is_admin()) {
 
+			require_once get_template_directory() . '/modules/date-field/date-field.php';
+			require_once get_template_directory() . '/modules/field/field.php';
+
 			add_action('add_meta_boxes', array($this, 'meta_boxes'), 10, 2);
 			add_action('save_post', array($this, 'save_meta_boxes'), 11, 3);
+
 			add_action('admin_enqueue_scripts', array($this, 'enqueue_styles'));
+
 
 		}
 
@@ -44,7 +49,9 @@ class Karma_Subevent {
 	public function enqueue_styles() {
 
 		wp_enqueue_style('subevent-styles', get_template_directory_uri().'/admin/css/subevent.css', array('date-popup-styles'), $this->version);
-		wp_enqueue_script('subevent', get_template_directory_uri() . '/admin/js/subevent.js', array('build', 'sortable', 'date-popup'), $this->version, true);
+		wp_enqueue_script('subevent', get_template_directory_uri() . '/admin/js/subevent.js', array('build', 'sortable', 'date-field'), $this->version, true);
+
+		// wp_enqueue_script('test', get_template_directory_uri() . '/admin/js/test.js', array('build', 'sortable', 'date-field'), $this->version, true);
 
 	}
 
@@ -67,7 +74,7 @@ class Karma_Subevent {
 			'has_archive'        => true,
 			'hierarchical'       => false,
 			'menu_position'      => null,
-			'supports'           => array('title', 'editor')
+			'supports'           => array('title')
 		));
 
 		foreach ($this->fields as $field) {
@@ -106,7 +113,38 @@ class Karma_Subevent {
 			'default'
 		);
 
+		add_meta_box(
+			'date-details',
+			'Détails',
+			$this->subevent_metabox_callback,
+			array($this->sub_type),
+			'normal',
+			'default'
+		);
+
 	}
+
+	/**
+	 * @callback 'add_meta_box'
+	 */
+	// public function date_meta_box($post) {
+	//
+	// 	foreach ($this->fields as $field) {
+	//
+	// 		$input = isset($field['input']) ? $field['input'] : 'text';
+	//
+	// 		if (isset($field['type']) && $field['type'] === 'meta') {
+	//
+	// 			do_action('karma_field', $post->ID, $field['name'], $input);
+	//
+	// 		}
+	//
+	// 	}
+	//
+	//
+	//
+	// }
+
 
 	/**
 	 * @callback 'add_meta_box'
@@ -177,13 +215,15 @@ class Karma_Subevent {
 
 						}
 
-						$start_date = Karma_Date::parse($_POST['subevent']['start_date'][$i], 'dd.mm.yyyy', 'yyyy-mm-dd hh:ii:ss');
+						$start_date = $_POST['subevent']['start_date'][$i];
+						$timestamp = Karma_Date::parse($start_date);
 
 						$post_fields = array(
 							'post_type' => $this->sub_type,
 							'post_status' => 'publish',
 							'post_parent' => $post_id,
-							// 'post_title' => $post->post_title . ' ' . $_POST['start_date'][$i],
+							'post_title' => $post->post_title . ' ' . Karma_Date::format($timestamp, 'dd-mm-yyyy'),
+							'post_name' => sanitize_title($post->post_title . '-' . Karma_Date::format($timestamp, 'dd-mm-yyyy')),
 							'meta_input' => array(
 								'start_date' => $start_date,
 								'end_date' => $start_date,

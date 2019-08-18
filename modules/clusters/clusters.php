@@ -1108,7 +1108,7 @@ class Karma_Clusters {
 				'title' => 'Update Clusters',
 				'href'  => '#',
 				'meta'  => array(
-					'onclick' => 'ajaxGet(KarmaTaskManager.ajax_url, {action: "karma_clusters_update_all"}, function(results) {KarmaTaskManager.update();});'
+					'onclick' => 'ajaxGet(KarmaTaskManager.ajax_url, {action: "karma_clusters_update_all"}, function(results) {KarmaTaskManager.update();});event.preventDefault();'
 				)
 			));
 

@@ -3,7 +3,7 @@
 /**
  *	Class Karma_Sublanguage
  */
-class Karma_Background_Image {
+class Karma_Background_Image_Compat {
 
 	/**
 	 * get image sizes data
@@ -39,16 +39,16 @@ class Karma_Background_Image {
 
 }
 
-global $karma_background_image;
-$karma_background_image = new Karma_Background_Image;
+global $karma_background_image_compat;
+$karma_background_image_compat = new Karma_Background_Image_Compat;
 
 function karma_get_image_data($attachement_id) {
-	global $karma_background_image;
+	global $karma_background_image_compat;
 
-	return $karma_background_image->get_image_data($attachement_id);
+	return $karma_background_image_compat->get_image_data($attachement_id);
 }
 function karma_get_images_data($attachement_ids) {
-	global $karma_background_image;
+	global $karma_background_image_compat;
 
-	return $karma_background_image->get_images_data($attachement_ids);
+	return $karma_background_image_compat->get_images_data($attachement_ids);
 }

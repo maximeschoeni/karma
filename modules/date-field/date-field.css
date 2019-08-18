@@ -1,0 +1,166 @@
+/* popup */
+.karma-popup {
+	position: fixed;
+	z-index: 100000;
+	width: 245px;
+	height: 300px;
+	user-select: none;
+}
+.karma-popup-content {
+
+}
+.karma-popup-header {
+	position: absolute;
+	width: 100%;
+	padding: 20px 20px;
+	box-sizing: border-box;
+	border-bottom: 1px solid #ddd;
+	height: 70px;
+}
+.karma-popup-header h1 {
+	font-size: 18px;
+	margin: 5px 0;
+}
+.karma-popup-body {
+	position: absolute;
+	position: absolute;
+	width: 100%;
+	top: 70px;
+	bottom: 70px;
+}
+.karma-column-container {
+	display: table;
+	width: 100%;
+	table-layout: fixed;
+	height: 100%;
+}
+.karma-column {
+	display: table-cell;
+	padding: 10px 20px;
+}
+.karma-column.calendar-column {
+	width: 60%;
+}
+.karma-column.detail-column {
+	background-color: #f3f3f3;
+	border-left: 1px solid #ddd;
+}
+.karma-column.detail-column input[type=text] {
+	box-sizing: border-box;
+	margin: 0;
+	width: 100%;
+}
+.karma-popup-footer {
+	position: absolute;
+	width: 100%;
+	padding: 20px 20px;
+	box-sizing: border-box;
+	border-top: 1px solid #ddd;
+	height: 70px;
+	bottom: 0;
+}
+.karma-popup-footer .button-primary {
+	float: right;
+}
+
+/* calendar */
+.karma-calendar-nav {
+	display: table;
+	width: 100%;
+	table-layout: fixed;
+}
+.karma-calendar-nav div {
+	display: table-cell;
+	text-align: center;
+	width: 20%;
+	vertical-align: middle;
+	height: 36px;
+	cursor: pointer;
+}
+.karma-calendar-nav div.karma-current-month {
+	width: 60%;
+}
+.karma-calendar-body {
+	display: table;
+	width: 100%;
+	table-layout: fixed;
+}
+.karma-calendar-body ul {
+	display: table-row;
+}
+.karma-calendar-body ul li {
+	display: table-cell;
+	width: 14.2857%; /* 1/7 */
+	text-align: center;
+	vertical-align: middle;
+	height: 32px;
+	cursor: pointer;
+	padding: 2px;
+}
+.karma-calendar-body ul li.offset {
+	cursor: default;
+}
+.karma-calendar-body ul li.offset span {
+	display: none;
+}
+.karma-calendar-arrow:hover,
+.karma-calendar-body ul li:hover,
+.karma-calendar-body ul li.today {
+	background-color: rgba(0,0,0,.04);
+}
+.karma-calendar-body ul li:active,
+.karma-calendar-body ul li.active {
+	background-color: #0085ba; /* rgba(0,0,0,.04); */
+	color: white;
+}
+.karma-calendar-body ul li:not(.active).today,
+.karma-calendar-body ul li:not(.active):hover {
+	/* background-color: rgba(0,0,0,.04); */
+}
+.karma-calendar-body ul li.current {
+	padding: 0;
+	border: 2px solid black;
+}
+
+
+
+/* date-table */
+
+#karma-spectacle-dates {
+	margin-top: 20px;
+
+}
+#karma-spectacle-dates label {
+	font-weight: bold;
+
+}
+#karma-date-table-container {
+	margin-top: 20px;
+}
+
+#karma-date-table-container table {
+	width: 100%;
+	max-width: 1040px;
+	border-collapse: collapse;
+}
+
+#karma-date-table-container table tbody tr:nth-child(odd) {
+  background-color: #f9f9f9;
+}
+
+#karma-date-table-container table tr th,
+#karma-date-table-container table tr td {
+	text-align: left;
+	padding-right: 20px;
+}
+#karma-date-table-container table tr.trash td {
+	text-decoration: line-through;
+}
+
+#karma-date-table-container table tr td input {
+	width: 60px;
+	box-sizing: border-box;
+}
+#karma-date-table-container table tr th.small-cell {
+	width: 160px;
+}
