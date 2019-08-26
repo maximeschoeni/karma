@@ -4,7 +4,7 @@
 
 class Karma {
 
-	var $version = '001';
+	var $version = '002';
 
 	/**
 	 *	Karma_Options object
@@ -91,6 +91,9 @@ class Karma {
 	 *	Print theme styles and scripts
 	 */
 	public function public_enqueue_scripts() {
+
+		wp_register_script('custom-event-polyfill', get_template_directory_uri() . '/js/polyfill/custom-event.min.js', array(), $this->version, true);
+		wp_register_script('promise-polyfill', get_template_directory_uri() . '/js/polyfill/promise.min.js', array(), $this->version, true);
 
 		wp_register_script('tinyAnimate', get_template_directory_uri() . '/js/utils/TinyAnimate.js', array(), $this->version, true);
 		wp_register_script('swipe', get_template_directory_uri() . '/js/utils/swipe.js', array(), $this->version, true);

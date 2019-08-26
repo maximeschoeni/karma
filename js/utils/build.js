@@ -22,3 +22,17 @@ function build(tag) {
 	}
 	return element;
 }
+
+function buildNode(callback) {
+	return function(container) {
+		var content;
+		function update() {
+			if (content) {
+				container.removeChild(content);
+			}
+			content = callback(update);
+			container.appendChild(content);
+		}
+		update();
+	};
+}
