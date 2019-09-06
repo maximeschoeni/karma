@@ -14,9 +14,8 @@ class Karma_Clusters {
 	 */
 	function __construct() {
 
-		// require_once get_template_directory() . '/modules/clusters/ui.php';
+		require_once get_template_directory() . '/modules/clusters/multilanguage.php';
 		require_once get_template_directory() . '/modules/task-manager/task-manager.php';
-
 		require_once get_template_directory() . '/admin/class-file.php';
 
 		$this->file_manager = new Karma_Content_Directory;
@@ -450,7 +449,10 @@ class Karma_Clusters {
 
 		} else {
 
-			echo json_encode("id not set");
+			echo json_encode(array(
+				'error' => "id not set",
+				'GET' => $_GET
+			));
 
 		}
 
@@ -466,25 +468,18 @@ class Karma_Clusters {
 
 		$output = array();
 
-		if (isset($_POST['target_id'])) {
+		if (isset($_REQUEST['target_id'])) {
 
-			$target_id = intval($_POST['target_id']);
-			$post_type = esc_attr($_POST['post_type']);
-			// $dependencies = $karma->options->get_option('expired_clusters');
+			$target_id = intval($_REQUEST['target_id']);
+			$post_type = esc_attr($_REQUEST['post_type']);
 
 			$output['target_id'] = $target_id;
-			// $output['dependencies'] = $dependencies;
 
 			$this->update_cluster($target_id);
 
 			$output['cluster'] = $this->get_cluster($target_id, $post_type);
 
 			$table = $wpdb->prefix.$this->dependency_table;
-
-			// $row = $wpdb->get_var($wpdb->prepare(
-			//  "SELECT id, status FROM $table WHERE target_id = %d",
-			//  $dependency_id
-			// ));
 
 			$wpdb->update($table, array(
 				'status' => 0
@@ -506,51 +501,9 @@ class Karma_Clusters {
 				'%d'
 			));
 
-
-			// if ($row->status === '1') {
-			//
-			// 	$wpdb->update($table, array(
-			// 		'status' => 0
-			// 	), array(
-			// 		'status' => 1,
-			// 		'target_id' => $target_id,
-			// 	), array(
-			// 		'%d'
-			// 	), array(
-			// 		'%d'
-			// 	));
-			//
-			// } else if ($row->status === '2') {
-			//
-			// 	$wpdb->delete($table, array(
-		 	// 		'id' => $dependency_id,
-		 	// 	), array(
-		 	// 		'%d'
-		 	// 	));
-			//
-			// }
-
-
-			// if (in_array($post_id, $dependencies)) {
-			//
-			// 	$cluster = $this->update_cluster($post_id);
-			//
-			// 	$output['success'] = true;
-			// 	$output['cluster'] = $cluster;
-			//
-			// 	// $output['options'] = get_option('karma');
-			//
-			// 	$output['remove_log'] = $this->remove_dependency($post_id);
-			//
-			// } else {
-			//
-			// 	$output['error'] = 'id not in expire list';
-			//
-			//
-			// }
-
 		} else {
 
+			$output['REQUEST'] = $_REQUEST;
 			$output['error'] = 'id not set';
 
 		}
@@ -654,45 +607,49 @@ class Karma_Clusters {
 	/**
 	 * @filter 'karma_task'
 	 */
-	public function add_task($tasks) {
+	public function add_task($task) {
 		global $wpdb;
 
-		$table = $wpdb->prefix.$this->dependency_table;
+		if (empty($task)) {
 
-		// $dependency_ids = $wpdb->get_col("SELECT id FROM $table WHERE status > 0");
+			$table = $wpdb->prefix.$this->dependency_table;
 
-		$dependencies = $wpdb->get_results(
-			"SELECT d.target_id, p.post_type FROM $table AS d
-			JOIN $wpdb->posts AS p ON (d.target_id = p.ID)
-			WHERE d.status > 0
-			GROUP BY d.target_id"
-		);
+			// $dependency_ids = $wpdb->get_col("SELECT id FROM $table WHERE status > 0");
 
-		if ($dependencies) {
+			$dependencies = $wpdb->get_results(
+				"SELECT d.target_id, p.post_type FROM $table AS d
+				JOIN $wpdb->posts AS p ON (d.target_id = p.ID)
+				WHERE d.status > 0
+				GROUP BY d.target_id"
+			);
 
-			$items = array();
+			if ($dependencies) {
 
-			foreach ($dependencies as $dependency) {
+				$items = array();
 
-				$items[] = array(
-					'target_id' => $dependency->target_id,
-					'post_type' => $dependency->post_type,
-					'action' => 'clusters_update'
+				foreach ($dependencies as $dependency) {
+
+					$items[] = array(
+						'target_id' => $dependency->target_id,
+						'post_type' => $dependency->post_type,
+						'action' => 'clusters_update'
+					);
+
+				}
+
+				$items = apply_filters('karma_cluster_items_to_update', $items);
+
+				$task = array(
+					'name' => 'Clusters',
+					'items' => $items,
+					// 'task' => 'clusters_update'
 				);
 
 			}
 
-			$items = apply_filters('karma_cluster_items_to_update', $items);
-
-			$tasks[] = array(
-				'name' => 'Clusters',
-				'items' => $items,
-				'task' => 'clusters_update'
-			);
-
 		}
 
-		return $tasks;
+		return $task;
 	}
 
 	/**
@@ -707,6 +664,8 @@ class Karma_Clusters {
 			"UPDATE $table SET status = %d",
 			1
 		));
+
+		$output['success'] = 'ok';
 
 		echo json_encode($output);
 		exit;

@@ -342,7 +342,7 @@ class Karma_Clusters {
 
 		} else {
 
-			echo json_encode("id not set");
+			echo json_encode("id not set asdfafdsas");
 
 		}
 

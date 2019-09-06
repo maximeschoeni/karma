@@ -211,7 +211,14 @@ Class Karma_Multimedia {
 
 		$medias_obj = get_post_meta($post_id, $meta_key, true);
 
+		if (!$medias_obj) {
+
+			$medias_obj = array();
+
+		}
+
 		$medias_obj = apply_filters('karma_multimedia_prepare_medias', $medias_obj, $post_id, $meta_key, $types, $columns);
+
 
 // 		global $sublanguage_admin;
 //

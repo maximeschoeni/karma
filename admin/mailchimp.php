@@ -98,6 +98,7 @@ class Karma_Mailchimp {
 	 * @ajax 'subscribe_newsletter'
 	 */
 	public function ajax_subscribe_mailchimp($options) {
+		global $karma;
 
 		$output = array();
 
@@ -120,9 +121,21 @@ class Karma_Mailchimp {
 
 			}
 
-			$this->subscribe_mailchimp($data);
+			$api_key = $karma->options->get_option('mailchimp_key');
+			$list_id = $karma->options->get_option('mailchimp_id');
 
-			$output['success'] = '1';
+			if ($api_key && $list_id) {
+
+				$results = $this->subscribe_mailchimp($data);
+
+				$output['mailchimps'] = $results;
+				$output['success'] = $results['http_code'] === 200;
+
+			} else {
+
+				$output['error'] = 'API Key/List ID not set';
+
+			}
 
 		} else {
 
@@ -141,11 +154,7 @@ class Karma_Mailchimp {
 	/**
 	 * Subscribe Mailchimps
 	 */
-	public function subscribe_mailchimp($data) {
-		global $karma;
-
-		$api_key = $karma->options->get_option('mailchimp_key');
-		$list_id = $karma->options->get_option('mailchimp_id');
+	public function subscribe_mailchimp($data, $api_key, $list_id) {
 
 		$member_id = md5(strtolower($email));
 		$data_center = substr($api_key,strpos($api_key,'-')+1);
@@ -163,8 +172,14 @@ class Karma_Mailchimp {
 		curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
 
 		$result = curl_exec($ch);
-		$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+		$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 		curl_close($ch);
+
+		return array(
+			'results' => json_decode($result),
+			'http_code' => $http_code,
+			'json' => $json
+		);
 
 	}
 

@@ -39,15 +39,15 @@ class Karma_Task_Manager {
 	public function ajax_get_task() {
 		global $karma;
 
-		$tasks = apply_filters('karma_task', array());
+		// $output = array();
 
-		$output = array();
+		$output = apply_filters('karma_task', array());
 
-		if ($tasks) {
-
-			$output = $tasks[0];
-
-		}
+		// if ($task) {
+		//
+		// 	$output = $task;
+		//
+		// }
 
 		echo json_encode($output);
 

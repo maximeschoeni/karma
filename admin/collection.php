@@ -33,6 +33,53 @@ class Karma_Collection {
 
 	}
 
+	public function get_item_index($key, $value) {
+
+		foreach ($this->items as $index => $item) {
+
+			$item = (object) $item;
+
+			if (isset($item->$key) && $item->$key === $value) {
+
+				return $index;
+
+			}
+
+		}
+
+		return -1;
+
+	}
+
+	public function remove_item($key, $value) {
+
+		$index = $this->get_item_index($key, $value);
+
+		if ($index > -1) {
+
+			unset($this->items[$index]);
+
+		}
+
+	}
+
+	public function remove_items($key, $value) {
+
+		$new_items = array();
+
+		foreach ($this->items as $item) {
+
+			if ($item->$key !== $value)) {
+
+				$new_items[] = $item;
+
+			}
+
+		}
+
+		$this->items = $new_items;
+	}
+
 	public function filter_by($key, $value) {
 
 		$collection = new Karma_Collection();
@@ -59,7 +106,7 @@ class Karma_Collection {
 		foreach ($this->items as $item) {
 
 			$item = (object) $item;
-			
+
 			if (isset($item->$key)) {
 
 				if (is_array($item->$key)) {

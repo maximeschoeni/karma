@@ -24,13 +24,7 @@ KarmaTaskManager.resolveTask = function(subTask, callback) {
 			if (KarmaTaskManager.is_admin) {
 				console.log(data);
 			}
-			data.action = subTask.task;
-			// ajaxPost(KarmaTaskManager.ajax_url, data, function(results) {
-			// 	console.log(results);
-			// 	KarmaTaskManager.dispatcher.trigger(subTask.task+"-done", [results]);
-			// 	loop();
-			// });
-
+			// data.action = subTask.task;
 			Ajax.send(KarmaTaskManager.ajax_url, Ajax.createQuery(data), 'POST', function(results) {
 				if (KarmaTaskManager.is_admin) {
 					try {
@@ -57,7 +51,7 @@ KarmaTaskManager.update = function() {
 		KarmaTaskManager.timeout = null;
 	}
 	KarmaTaskManager.getTask(function(results) {
-		if (results.name && results.task && results.items && results.items.length) {
+		if (results.name && results.items && results.items.length) {
 			KarmaTaskManager.resolveTask(results, function() {
 				KarmaTaskManager.update();
 			});

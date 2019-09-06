@@ -13,7 +13,6 @@ KarmaMultimedia.createManager = function() {
 		types: [],
 		columns: [],
 		add: function(item) {
-
 			// for (var i = 0; i < this.types.length; i++) {
 			// 	var type = this.types[i];
 			// 	item[type.key] = item[type.key] || type.default || null;
@@ -148,8 +147,9 @@ KarmaMultimedia.createManager = function() {
 			);
 		}
 	};
-
+	
 	// manager.items = JSON.parse(input.value);
+
 
 	manager.sortableManager.checkTarget = function(target) {
 		return target.classList.contains("media-box-cell");
