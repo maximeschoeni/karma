@@ -4,9 +4,9 @@
 Class Karma_Cache {
 
 	public $version = '01';
-
+	public $cache_directory = 'cache/';
 	public $dependency_table = 'htmlcache';
-
+	public $sitepage_table = 'htmlpage';
 	public $dependencies = array();
 
 
@@ -14,10 +14,6 @@ Class Karma_Cache {
 	 *	Profile requirement metabox callback
 	 */
 	public function __construct() {
-
-
-
-
 
 		// register_activation_hook(__FILE__, array('Karma_Cache', 'activate'));
 		// register_deactivation_hook(__FILE__, array('Karma_Cache', 'deactivate'));
@@ -39,19 +35,19 @@ Class Karma_Cache {
 		// add_action('karma_cache_add_taxonomy_dependency', array($this, 'add_taxonomy_dependency'));
 
 
-		add_action('karma_cache_add_dependency_id', array($this, 'add_dependency_id'), 10, 2);
-		add_action('karma_cache_add_dependency_ids', array($this, 'add_dependency_ids'), 10, 2);
+		add_action('karma_cache_add_dependency_id', array($this, 'add_dependency_id'), 10, 4);
+		add_action('karma_cache_add_dependency_ids', array($this, 'add_dependency_ids'), 10, 4);
 		add_action('karma_cache_add_dependency_type', array($this, 'add_dependency_type'), 10, 3);
 
 
-		add_filter('karma_task', array($this, 'add_task'), 8);
-		add_filter('karma_task', array($this, 'rebuild_all_task'));
+		add_filter('karma_task', array($this, 'add_task'), 11);
+		// add_filter('karma_task', array($this, 'rebuild_all_task'), 11);
 
 		add_action('save_post', array($this, 'save_post'), 10, 3);
-		add_action('before_delete_post', array($this, 'before_delete_post'), 10);
+		add_action('before_delete_post', array($this, 'delete_post'), 10);
 		add_action('edit_term', array($this, 'edit_term'), 10, 3);
-		add_action('create_term', array($this, 'create_term'), 10, 3);
-		add_action('pre_delete_term', array($this, 'pre_delete_term'), 10, 2);
+		add_action('create_term', array($this, 'edit_term'), 10, 3);
+		add_action('pre_delete_term', array($this, 'delete_term'), 10, 2);
 
 		add_action('karma_cluster_create_object', array($this, 'create_object'), 10, 3);
 		add_action('karma_cluster_update_object', array($this, 'update_object'), 10, 3);
@@ -59,6 +55,10 @@ Class Karma_Cache {
 
 		add_action('wp_ajax_karma_cache_regenerate_url', array($this, 'ajax_regenerate_url'));
 		add_action('wp_ajax_karma_htmlcache_flush', array($this, 'ajax_flush'));
+
+		add_filter('mod_rewrite_rules', array($this, 'mod_rewrite'));
+
+
 
 		if (is_admin()) {
 
@@ -81,11 +81,7 @@ Class Karma_Cache {
 			// skip request parsing
 			add_filter('do_parse_request', array($this, 'do_parse_request'), 10, 3);
 
-			// delete cache when status is not publish
-			add_filter('posts_results', array($this, 'posts_results'), 10, 2);
 
-			// -> handle html cache
-			add_action('wp', array($this, 'wp'), 12); // after sublanguage redirection!
 
 		}
 
@@ -134,8 +130,6 @@ Class Karma_Cache {
 
 	}
 
-
-
 	/**
 	 * @hook 'admin_enqueue_scripts'
 	 */
@@ -156,15 +150,22 @@ Class Karma_Cache {
 
 			require_once get_template_directory() . '/admin/table.php';
 
-			Karma_Table::create($this->dependency_table, "
-				id int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
-				url varchar(255) NOT NULL,
-				object_id int(11) NOT NULL,
-				object varchar(10) NOT NULL,
-				type varchar(50) NOT NULL,
-				context varchar(1) NOT NULL,
+			Karma_Table::create($this->sitepage_table, "
+				id BIGINT(20) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+				parent BIGINT(20) NOT NULL,
+				path varchar(255) NOT NULL,
+				request varchar(255) NOT NULL,
 				status smallint(1) NOT NULL
 			", '002');
+
+			Karma_Table::create($this->dependency_table, "
+				id BIGINT(20) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+				page_id BIGINT(20) NOT NULL,
+				object_id BIGINT(20) NOT NULL,
+				object varchar(10) NOT NULL,
+				type varchar(50) NOT NULL,
+				stress smallint(1) NOT NULL
+			", '005');
 
 		}
 
@@ -176,43 +177,67 @@ Class Karma_Cache {
 	public function do_parse_request($true, $wp, $extra_query_vars) {
 		global $karma;
 
-		if ($karma->options->get_option('html_cache')) {
+		if ($karma->options->get_option('html_cache') && is_user_logged_in()) {
 
-			$wp->query_vars = $_REQUEST;
+			$request = add_query_arg($_REQUEST, ''); // $this->get_current_query();
 
-			// -> for sublanguage filter
-			do_action_ref_array( 'parse_request', array( &$this ) );
+			if (isset($_REQUEST['updatepage'])) {
 
-			return false;
+				$request = remove_query_arg('updatepage', $request);
 
-		}
+				$this->update_sitepage($request, $_REQUEST['updatepage']);
 
-		return $true;
-	}
+			}
 
-	/**
-	 * @filter 'posts_results'
-	 */
-	public function posts_results($posts, $wp_query) {
-		global $karma;
+			$this->sitepage = $this->get_sitepage($request);
 
-		if ($wp_query->is_main_query() && $karma->options->get_option('html_cache') && is_singular()) {
+			if ($this->sitepage) {
 
-			foreach ($posts as $post) {
+				$wp->query_vars = $_REQUEST;
 
-				if ($this->is_post_type_single_cacheable($post->post_type) && $post->post_status !== 'publish') {
+				// -> for sublanguage filter
+				do_action_ref_array( 'parse_request', array( &$this ) );
 
-					// -> delete post cache
-					$this->delete_post_cache($post);
+				// delete cache when status is not publish
+				// add_filter('posts_results', array($this, 'posts_results'), 10, 2);
 
-				}
+				// -> handle html cache
+				add_action('wp', array($this, 'wp'), 12); // after sublanguage redirection!
+
+				return false;
 
 			}
 
 		}
 
-		return $posts;
- 	}
+
+
+		return $true;
+	}
+
+	// /**
+	//  * @filter 'posts_results'
+	//  */
+	// public function posts_results($posts, $wp_query) {
+	// 	global $karma;
+	//
+	// 	if ($wp_query->is_main_query() && $karma->options->get_option('html_cache') && is_singular()) {
+	//
+	// 		foreach ($posts as $post) {
+	//
+	// 			if ($this->is_post_type_single_cacheable($post->post_type) && $post->post_status !== 'publish') {
+	//
+	// 				// -> delete post cache
+	// 				$this->delete_post_cache($post);
+	//
+	// 			}
+	//
+	// 		}
+	//
+	// 	}
+	//
+	// 	return $posts;
+ 	// }
 
 	// /**
 	//  * get url for resource
@@ -269,35 +294,35 @@ Class Karma_Cache {
 	/**
 	 * get url for resource
 	 */
-	public function get_current_query() {
-
-		$queried_object = get_queried_object();
-
-		if (is_home()) {
-
-			$link = '';
-
-		} else if (is_singular()) {
-
-			$link = $this->get_post_query($queried_object);
-
-		} else if (is_category() || is_tag() || is_tax()) {
-
-			$link = $this->get_term_query($queried_object);
-
-		} else if (is_post_type_archive()) {
-
-			$link = $this->get_archive_query(get_query_var('post_type'));
-
-		} else {
-
-			$link = null;
-
-		}
-
-		return $link;
-
-	}
+	// public function get_current_query() {
+	//
+	// 	$queried_object = get_queried_object();
+	//
+	// 	if (is_home()) {
+	//
+	// 		$link = '';
+	//
+	// 	} else if (is_singular()) {
+	//
+	// 		$link = $this->get_post_query($queried_object);
+	//
+	// 	} else if (is_category() || is_tag() || is_tax()) {
+	//
+	// 		$link = $this->get_term_query($queried_object);
+	//
+	// 	} else if (is_post_type_archive()) {
+	//
+	// 		$link = $this->get_archive_query(get_query_var('post_type'));
+	//
+	// 	} else {
+	//
+	// 		$link = null;
+	//
+	// 	}
+	//
+	// 	return $link;
+	//
+	// }
 
 	/**
 	 * get query for post
@@ -314,6 +339,8 @@ Class Karma_Cache {
 
 		}
 
+		$link = apply_filters('karma_htmlcache_post_request', $link, $post, $this);
+
 		return $link;
 
 	}
@@ -323,7 +350,11 @@ Class Karma_Cache {
 	 */
 	public function get_term_query($term) {
 
-		return '?taxonomy='.$term->taxonomy.'&term='.$term->slug;
+		$link = '?taxonomy='.$term->taxonomy.'&term='.$term->slug;
+
+		$link = apply_filters('karma_htmlcache_term_request', $link, $term, $this);
+
+		return $link;
 
 	}
 
@@ -332,7 +363,11 @@ Class Karma_Cache {
 	 */
 	public function get_archive_query($post_type) {
 
-		return '?post_type='.$post_type;
+		$link = '?post_type='.$post_type;
+
+		$link = apply_filters('karma_htmlcache_archive_request', $link, $post_type, $this);
+
+		return $link;
 
 	}
 
@@ -398,46 +433,86 @@ Class Karma_Cache {
 	/**
  	 * get url for resource
  	 */
- 	public function get_current_cache_path() {
-
-		$queried_object = get_queried_object();
-
-		if (is_home() || is_front_page()) {
-
-			$link = ABSPATH;
-
-		} else if (is_singular() && $this->is_post_type_single_cacheable($queried_object->post_type)) {
-
-			$link = $this->get_post_cache_path($queried_object);
-
-		} else if ((is_category() || is_tag() || is_tax()) && $this->is_taxonomy_cacheable($queried_object->taxonomy)) {
-
-			$link = $this->get_term_cache_path($queried_object);
-
-		} else if (is_post_type_archive() && $this->is_post_type_archive_cacheable(get_query_var('post_type'))) {
-
-			$link = $this->get_archive_cache_path(get_query_var('post_type'));
-
-		} else {
-
-			$link = null;
-
-		}
-
-		return $link;
-
-	}
+ 	// public function get_current_cache_path() {
+	// 	global $sublanguage;
+	//
+	// 	$queried_object = get_queried_object();
+	//
+	// 	if (is_home() || is_front_page()) {
+	//
+	// 		$link = home_url().'/';
+	//
+	// 	} else if (is_singular() && $this->is_post_type_single_cacheable($queried_object->post_type)) {
+	//
+	// 		$link = $this->get_post_cache_path($queried_object);
+	//
+	// 	} else if ((is_category() || is_tag() || is_tax()) && $this->is_taxonomy_cacheable($queried_object->taxonomy)) {
+	//
+	// 		$link = $this->get_term_cache_path($queried_object);
+	//
+	// 	} else if (is_post_type_archive() && $this->is_post_type_archive_cacheable(get_query_var('post_type'))) {
+	//
+	// 		$link = $this->get_archive_cache_path(get_query_var('post_type'));
+	//
+	// 	} else {
+	//
+	// 		$link = null;
+	//
+	// 	}
+	//
+	// 	return $link;
+	//
+	// }
 
 	/**
 	 * get url for resource
 	 */
 	public function get_post_cache_path($post) {
+		global $wp_rewrite;
 
-		$link = get_permalink($post);
+		$post_type_obj = get_post_type_object($post->post_type);
+// echo '<pre>'; print_r($post_type_obj);
 
-		$link = str_replace(get_option('home'), rtrim(ABSPATH, '/'), $link);
+		$link = '';
 
-		return $link;
+		if ($post_type_obj->rewrite) {
+
+			$link .= $post_type_obj->rewrite['slug'].'/';
+
+		}
+
+		if ($post_type_obj->hierarchical) {
+
+			$link .= get_page_uri($post);
+
+		} else {
+
+			$link .= $post->post_name;
+
+		}
+
+		// $link = get_permalink($post);
+
+		// $link = str_replace(get_option('home'), rtrim(ABSPATH, '/').'/cache', $link);
+
+		// handle endpoints
+		// foreach ($wp_rewrite->endpoints as $endpoint) {
+		//
+		// 	if (isset($_REQUEST[$endpoint[2]])) { // && ($endpoint[0] & EP_PAGES)
+		//
+		// 		$link .= $endpoint[1].'/';
+		//
+		// 		if ($_REQUEST[$endpoint[2]]) {
+		//
+		// 			$link .= $_REQUEST[$endpoint[2]].'/';
+		//
+		// 		}
+		//
+		// 	}
+		//
+		// }
+
+		return apply_filters('karma_htmlcache_post_path', $link, $post, $post_type_obj, $this);
 
 
 		// global $wp_rewrite;
@@ -514,11 +589,17 @@ Class Karma_Cache {
 	 */
 	public function get_archive_cache_path($post_type) {
 
-		$link = get_post_type_archive_link($post_type);
+		$post_type_obj = get_post_type_object($post_type);
 
-		$link = str_replace(get_option('home'), rtrim(ABSPATH, '/'), $link);
+		$path = $post_type_obj->rewrite['slug'];
 
-		return $link;
+		return apply_filters('karma_htmlcache_archive_path', $path, $post_type, $post_type_obj, $this);
+
+		// $link = get_post_type_archive_link($post_type);
+		//
+		// // $link = str_replace(get_option('home'), rtrim(ABSPATH, '/').'/cache', $link);
+		//
+		// return $link;
 
 		// global $wp_rewrite;
 		//
@@ -543,11 +624,25 @@ Class Karma_Cache {
 	 * get url for resource
 	 */
 	public function get_term_cache_path($term) {
-		$link = get_term_link($term);
+		// $link = get_term_link($term);
 
-		$link = str_replace(get_option('home'), rtrim(ABSPATH, '/'), $link);
+		// $link = str_replace(get_option('home'), rtrim(ABSPATH, '/').'/cache', $link);
 
-		return $link;
+		$taxonomy_obj = get_taxonomy($term->taxonomy);
+
+		$path = $term->slug;
+
+		if ($taxonomy_obj->rewrite['with_front']) {
+
+			$path = $taxonomy_obj->rewrite['slug'].'/'.$path;
+
+		}
+
+		return apply_filters('karma_htmlcache_term_path', $path, $term, $taxonomy_obj, $this);
+
+		// -> todo: hierarchical terms
+
+		return $path;
 
 		//
 		// global $wp_rewrite;
@@ -586,38 +681,40 @@ Class Karma_Cache {
 	/**
 	 * get url for resource
 	 */
-	public function delete_post_cache($post) {
-		global $wpdb;
+	// public function delete_post_cache($post) {
+	// 	global $wpdb;
+	//
+	// 	$children = $wpdb->get_results($wpdb->prepare("SELECT * FROM $wpdb->posts WHERE post_parent = %d", $post->ID));
+	//
+	// 	foreach ($children as $child) {
+	//
+	// 		$this->delete_post_cache($child);
+	//
+	// 	}
+	//
+	// 	$path = $this->get_post_cache_path($post);
+	//
+	// 	if (file_exists($path.'/index.html')) {
+	//
+	// 		unlink($path.'/index.html');
+	//
+	// 	}
+	//
+	// 	if (file_exists($path.'/script.js')) {
+	//
+	// 		unlink($path.'/script.js');
+	//
+	// 	}
+	//
+	// 	if (file_exists($path)) {
+	//
+	// 		unlink($path);
+	//
+	// 	}
+	//
+	// }
 
-		$children = $wpdb->get_results($wpdb->prepare("SELECT * FROM $wpdb->posts WHERE post_parent = %d", $post->ID));
 
-		foreach ($children as $child) {
-
-			$this->delete_post_cache($child);
-
-		}
-
-		$path = $this->get_post_cache_path($post);
-
-		if (file_exists($path.'/index.html')) {
-
-			unlink($path.'/index.html');
-
-		}
-
-		if (file_exists($path.'/script.js')) {
-
-			unlink($path.'/script.js');
-
-		}
-
-		if (file_exists($path)) {
-
-			unlink($path);
-
-		}
-
-	}
 
 	/**
 	 * @hook wp
@@ -632,21 +729,31 @@ Class Karma_Cache {
 // die();
 
 
-		if ($karma->options->get_option('html_cache') && is_user_logged_in()) {
+
+		// if ($karma->options->get_option('html_cache')) {
 
 			remove_action( 'template_redirect', 'redirect_canonical' );
 
-			$this->current_query = add_query_arg($_REQUEST, ''); // $this->get_current_query();
-			$this->current_path = $this->get_current_cache_path();
+			// $this->current_query = add_query_arg($_REQUEST, ''); // $this->get_current_query();
+			//
+			// $this->sitepage = $this->get_sitepage($this->current_query);
+			//
+			// if ($this->sitepage) {
 
+
+			// $this->current_path = $this->get_current_cache_path();
+
+			// var_dump($this->current_path, $_REQUEST);
+			// die();
+
+			// var_dump($this->current_path); die();
 			// var_dump($this->get_current_query(), $this->current_query, build_query($_REQUEST));
 			// die();
-			$q = get_queried_object();
+			// $q = get_queried_object();
 			// var_dump(is_home());
 			// die();
 
-			if ($this->current_query && $this->current_path) {
-
+			// if ($this->current_path) {
 
 				//
 				//
@@ -672,13 +779,13 @@ Class Karma_Cache {
 
 				// }
 
-			} else {
-
-
-
-			}
-
-		}
+			// } else {
+			//
+			// 	die('404');
+		//
+		// 	}
+		//
+		// }
 
 	}
 
@@ -686,30 +793,70 @@ Class Karma_Cache {
 	 * @callback ob_start
 	 */
 	public function save_ob($content) {
-
+		global $wpdb;
 		// $url = $this->get_current_query();
 
-		$this->save_dependencies($this->current_query);
+		$this->save_dependencies($this->sitepage);
 
+		$this->files['dependencies.json'] = json_encode($this->dependencies);
 		$this->files['index.html'] = $content;
 
 		// $this->write_files();
 
-		// $path = $this->get_current_cache_path();
+		// $this->current_path = $this->get_current_cache_path();
 
-		if (!file_exists($this->current_path)) {
 
-			mkdir($this->current_path, 0777, true);
+		// $this->files['log.txt'] = $this->current_path;
+
+		$path = ABSPATH.'cache/'.$this->sitepage->path;
+
+		if (!file_exists($path)) {
+
+			mkdir($path, 0777, true);
 
 		}
 
 		foreach ($this->files as $filename => $data) {
 
-			file_put_contents($this->current_path.'/'.$filename, $data);
+			file_put_contents($path.'/'.$filename, $data);
+
+			// $this->log($path.'/'.$filename);
 
 		}
 
+		$sitepage_table = $wpdb->prefix.$this->sitepage_table;
+
+		$wpdb->update($sitepage_table, array(
+			'status' => 0
+		), array(
+			'id' => $this->sitepage->id
+		), array(
+			'%d'
+		), array(
+			'%d'
+		));
+
 		return $content;
+	}
+
+	public function log($msg) {
+
+		if (file_exists(ABSPATH.'cache/log.log')) {
+			$logs = file_get_contents(ABSPATH.'cache/log.log');
+		} else {
+			$logs = '';
+		}
+
+		$logs .= $msg."\n";
+
+		if (!file_exists(ABSPATH.'cache')) {
+
+			mkdir(ABSPATH.'cache', 0777, true);
+
+		}
+
+		file_put_contents(ABSPATH.'cache/log.log', $logs);
+
 	}
 
 	/**
@@ -899,32 +1046,26 @@ Class Karma_Cache {
 	/**
 	 * @hook karma_cache_add_dependency_id
 	 */
-	public function add_dependency_id($object, $id, $type = null) {
+	public function add_dependency_id($object, $type, $id, $stress = 1) {
 
-		$this->dependencies[$object][$id] = '';
+		$this->dependencies[$object][$type][$id] = $stress;
 
-		if ($type) {
-
-			$this->add_dependency_type($object, $type);
-
-		}
+		// if ($type) {
+		//
+		// 	$this->add_dependency_type($object, $type);
+		//
+		// }
 
 	}
 
 	/**
 	 * @hook karma_cache_add_dependency_ids
 	 */
-	public function add_dependency_ids($object, $ids, $type = null) {
+	public function add_dependency_ids($object, $type, $ids, $stress = 1) {
 
 		foreach ($ids as $id) {
 
-			$this->add_dependency_id($object, $id);
-
-		}
-
-		if ($type) {
-
-			$this->add_dependency_type($object, $type);
+			$this->add_dependency_id($object, $id, $type, $stress);
 
 		}
 
@@ -933,69 +1074,131 @@ Class Karma_Cache {
 	/**
 	 * @hook karma_cache_add_dependency_type
 	 */
-	public function add_dependency_type($object, $type, $context = '') {
+	public function add_dependency_type($object, $type, $stress = 1) {
 
-		$this->dependencies[$object][0] = $type;
+		$this->log($stress);
+		$this->dependencies[$object][$type][0] = $stress;
 
 	}
-
 
 	/**
 	 * add post_type dependency
 	 */
-	public function save_dependencies($url) {
+	public function save_dependencies($sitepage) {
 		global $wpdb;
 
-		$this->files['dependencies.json'] = json_encode($this->dependencies);
+		$dependency_table = $wpdb->prefix.$this->dependency_table;
 
-		$table = $wpdb->prefix.$this->dependency_table;
-
-		$dependency_ids = array();
+		$wpdb->delete($dependency_table, array(
+			'page_id' => $sitepage->id,
+		), array(
+			'%d'
+		));
 
 		foreach ($this->dependencies as $object => $object_dependency) {
 
-			foreach ($object_dependency as $id => $type) {
+			foreach ($object_dependency as $type => $ids) {
 
-				$dependency_id = $wpdb->get_var($wpdb->prepare("SELECT id FROM $table WHERE url = %s AND object = %s AND id = %d AND type = %s", $url, $object, $id, $type));
+				foreach ($ids as $id => $stress) {
 
-				if (!$dependency_id) {
-
-					$wpdb->insert($table, array(
-						'url' => $url,
+					$wpdb->insert($dependency_table, array(
+						'page_id' => $sitepage->id,
 						'object' => $object,
 						'object_id' => $id,
-						'type' => $type
+						'type' => $type,
+						'stress' => $stress
 					), array(
-						'%s',
+						'%d',
 						'%s',
 						'%d',
-						'%s'
+						'%s',
+						'%d'
 					));
 
-					$dependency_id = $wpdb->insert_id;
+					// $this->log("add dependency: $sitepage->id $object $type $id $stress");
 
 				}
-
-				$dependency_ids[] = $dependency_id;
 
 			}
 
 		}
 
-		if ($dependency_ids) {
-
-			$sql_ids = implode(',', array_map('intval', $dependency_ids));
-
-			$wpdb->query($wpdb->prepare("DELETE FROM $table WHERE url = %s AND id NOT IN ($sql_ids)", $url));
-
-		} else {
-
-			$wpdb->query($wpdb->prepare("DELETE FROM $table WHERE url = %s", $url));
-
-		}
-
-
 	}
+
+	// /**
+	//  * add post_type dependency
+	//  */
+	// public function save_dependencies($sitepage) {
+	// 	global $wpdb;
+	//
+	// 	$this->files['dependencies.json'] = json_encode($this->dependencies);
+	//
+	// 	// $sitepage_table = $wpdb->prefix.$this->sitepage_table;
+	// 	$dependency_table = $wpdb->prefix.$this->dependency_table;
+	//
+	// 	// $sitepage_id = $wpdb->get_var($wpdb->prepare(
+	// 	// 	"SELECT id FROM $sitepage_table WHERE request = %s",
+	// 	// 	$url
+	// 	// ));
+	//
+	// 	$dependency_ids = array();
+	//
+	// 	foreach ($this->dependencies as $object => $object_dependency) {
+	//
+	// 		foreach ($object_dependency as $type => $ids) {
+	//
+	// 			foreach ($ids as $id => $stress) {
+	//
+	// 				$dependency_id = $wpdb->get_var($wpdb->prepare(
+	// 					"SELECT id FROM $dependency_table WHERE page_id = %d AND object = %s AND id = %d AND type = %s",
+	// 					$sitepage->id,
+	// 					$object,
+	// 					$id,
+	// 					$type
+	// 				));
+	//
+	// 				if (!$dependency_id) {
+	//
+	// 					$wpdb->insert($dependency_table, array(
+	// 						'page_id' => $sitepage_id,
+	// 						'object' => $object,
+	// 						'object_id' => $id,
+	// 						'type' => $type,
+	// 						'stress' => $stress
+	// 					), array(
+	// 						'%d',
+	// 						'%s',
+	// 						'%d',
+	// 						'%s',
+	// 						'%d'
+	// 					));
+	//
+	// 					$dependency_id = $wpdb->insert_id;
+	//
+	// 				}
+	//
+	// 				$dependency_ids[] = $dependency_id;
+	//
+	// 			}
+	//
+	// 		}
+	//
+	// 	}
+	//
+	// 	if ($dependency_ids) {
+	//
+	// 		$sql_ids = implode(',', array_map('intval', $dependency_ids));
+	//
+	// 		$wpdb->query($wpdb->prepare("DELETE FROM $dependency_table WHERE page_id = %d AND id NOT IN ($sql_ids)", $sitepage->id));
+	//
+	// 	} else {
+	//
+	// 		$wpdb->query($wpdb->prepare("DELETE FROM $dependency_table WHERE page_id = %d", $sitepage->id));
+	//
+	// 	}
+	//
+	//
+	// }
 
 	/**
 	 * add post_type dependency
@@ -1060,18 +1263,18 @@ Class Karma_Cache {
 
 		if (empty($task)) {
 
-			$table = $wpdb->prefix.$this->dependency_table;
+			$sitepage_table = $wpdb->prefix.$this->sitepage_table;
 
-			$urls = $wpdb->get_col("SELECT DISTINCT url FROM $table WHERE status > 0");
+			$sitepages = $wpdb->get_results("SELECT * FROM $sitepage_table WHERE status > 0 ORDER BY status DESC");
 
-			if ($urls) {
+			if ($sitepages) {
 
 				$items = array();
 
-				foreach ($urls as $url) {
+				foreach ($sitepages as $sitepage) {
 
 					$items[] = array(
-						'url' => $url ? $url : '',
+						'url' => $sitepage->request,
 						'action' => 'karma_cache_regenerate_url'
 					);
 
@@ -1079,6 +1282,7 @@ Class Karma_Cache {
 
 				$task = array(
 					'name' => 'HTML Cache',
+					'sitepages' => $sitepages,
 					'items' => $items
 					// 'task' => 'karma_cache_regenerate_url'
 				);
@@ -1102,27 +1306,25 @@ Class Karma_Cache {
 
 			$url = $_POST['url'];
 
-			$table = $wpdb->prefix.$this->dependency_table;
+			// $dependency_table = $wpdb->prefix.$this->dependency_table;
+			//
+			// $wpdb->update($dependency_table, array(
+			// 	'status' => 0
+			// ), array(
+			// 	'request' => $url
+			// ), array(
+			// 	'%d'
+			// ), array(
+			// 	'%s'
+			// ));
 
-			$wpdb->update($table, array(
-				'status' => 0
-			), array(
-				'status' => 1,
-				'url' => $url
-			), array(
-				'%d',
-				'%d'
-			), array(
-				'%d'
-			));
-
-			$wpdb->delete($table, array(
-	 			'status' => 2,
-				'url' => $url
-	 		), array(
-	 			'%d',
-				'%s'
-	 		));
+			// $wpdb->delete($table, array(
+	 		// 	'status' => 2,
+			// 	'url' => $url
+	 		// ), array(
+	 		// 	'%d',
+			// 	'%s'
+	 		// ));
 
 			// wp_redirect(add_query_arg(array('cache' => '1'), home_url($url)));
 			wp_safe_redirect(get_option('home').('/index.php'.$url));
@@ -1141,51 +1343,223 @@ Class Karma_Cache {
 	}
 
 	/**
-	 * update_post_dependency on saving a cacheable post
+	 * get_sitepage from request string
 	 */
-	function update_object_dependency($url, $id, $object, $type, $delete = false) {
+	public function get_sitepage($url) {
 		global $wpdb;
 
-		$table = $wpdb->prefix.$this->dependency_table;
+		$sitepage_table = $wpdb->prefix.$this->sitepage_table;
 
-		$dependency_id = $wpdb->get_var($wpdb->prepare(
-			"SELECT id FROM $table
-			WHERE url = %s AND object = %s AND (object_id = %d OR type = %s)",
-			$url,
-			$object,
-			$id,
-			$type
+		return $wpdb->get_row($wpdb->prepare(
+			"SELECT * FROM $sitepage_table WHERE request = %s",
+			$url
 		));
 
-		if ($dependency_id) {
+	}
 
-			$wpdb->update($table, array(
-				'status' => $delete ? 2 : 1
-			), array(
-				'id' => $dependency_id
-			), array(
-				'%d'
-			), array(
-				'%d'
+
+	/**
+	 * update_sitepage on saving a cacheable post
+	 */
+	function update_sitepage($url, $path, $parent_url = '') {
+		global $wpdb;
+
+		$sitepage_table = $wpdb->prefix.$this->sitepage_table;
+
+		$sitepage = $wpdb->get_row($wpdb->prepare(
+			"SELECT * FROM $sitepage_table WHERE request = %s",
+			$url
+		));
+
+		if ($parent_url) {
+
+			$parent_id = $wpdb->get_var($wpdb->prepare(
+				"SELECT id FROM $sitepage_table WHERE request = %s",
+				$parent_url
 			));
 
-		} else if (!$dependency_id) {
+		}
 
-			$wpdb->insert($table, array(
-				'url' => $url,
-				'object' => $object,
-				'object_id' => $id,
-				'status' => $delete ? 2 : 1
+		if ($sitepage) {
+
+			if (isset($parent_id) && $parent_id !== $sitepage->parent) {
+
+				$wpdb->update($sitepage_table, array(
+					'parent' => $parent_id,
+				), array(
+					'id' => $sitepage->id
+				), array(
+					'%d'
+				), array(
+					'%d'
+				));
+
+			}
+
+			if ($sitepage->path !== $path) {
+
+				// page url changed -> delete page in cache files
+				$this->delete_cachefile($sitepage);
+
+				$this->outdate_sitepage_deep($sitepage, 100);
+
+				$wpdb->update($sitepage_table, array(
+					'path' => $path,
+				), array(
+					'id' => $sitepage->id
+				), array(
+					'%s'
+				), array(
+					'%d'
+				));
+
+			} else {
+
+				$this->outdate_sitepage($sitepage, 100);
+
+			}
+
+		} else { // -> create sitepage
+
+			$wpdb->insert($sitepage_table, array(
+				'parent' => isset($parent_id) ? $parent_id : 0,
+				'path' => $path,
+				'request' => $url,
+				'status' => 100
 			), array(
-				'%s',
-				'%s',
 				'%d',
+				'%s',
+				'%s',
 				'%d'
 			));
 
 		}
 
 	}
+
+	/**
+	 * remove_sitepage on saving a cacheable post
+	 */
+	function remove_sitepage($url) {
+		global $wpdb;
+
+		$sitepage_table = $wpdb->prefix.$this->sitepage_table;
+
+		$sitepage = $wpdb->get_row($wpdb->prepare(
+			"SELECT * FROM $sitepage_table WHERE request = %s",
+			$url
+		));
+
+		if ($sitepage) {
+
+			// page url changed -> delete page in cache files
+			$this->delete_cachefile($sitepage);
+
+			$wpdb->delete($sitepage_table, array(
+				'id' => $sitepage->id
+			), array(
+				'%d'
+			));
+
+			// delete dependencies
+			$dependency_table = $wpdb->prefix.$this->dependency_table;
+
+			$wpdb->delete($dependency_table, array(
+				'page_id' => $sitepage->id
+			), array(
+				'%d'
+			));
+
+		}
+
+	}
+
+	/**
+	 * outdate_children make all children outdated
+	 */
+	public function outdate_sitepage($sitepage, $status = 1) {
+		global $wpdb;
+
+		$sitepage_table = $wpdb->prefix.$this->sitepage_table;
+
+		$wpdb->update($sitepage_table, array(
+			'status' => $status,
+		), array(
+			'id' => $sitepage->id
+		), array(
+			'%d'
+		), array(
+			'%d'
+		));
+
+	}
+
+	/**
+	 * outdate_children make all children outdated
+	 */
+	public function outdate_sitepage_deep($sitepage, $status = 1) {
+		global $wpdb;
+
+		$sitepage_table = $wpdb->prefix.$this->sitepage_table;
+
+		$children = $wpdb->get_results($wpdb->prepare("SELECT * FROM $sitepage_table WHERE parent = %d", $sitepage->id));
+
+		foreach ($children as $child) {
+
+			$this->outdate_sitepage_deep($child, $status);
+
+		}
+
+		$this->outdate_sitepage($sitepage, $status);
+
+	}
+
+	/**
+	 * delete cache file
+	 */
+	public function delete_cachefile($sitepage) {
+		global $wpdb;
+
+		$sitepage_table = $wpdb->prefix.$this->sitepage_table;
+
+		$children = $wpdb->get_results($wpdb->prepare(
+			"SELECT * FROM $sitepage_table WHERE parent = %d",
+			$sitepage->id
+		));
+
+		foreach ($children as $child) {
+
+			$this->delete_cachefile($child);
+
+		}
+
+		if (file_exists($sitepage->path.'/index.html')) {
+
+			unlink($sitepage->path.'/index.html');
+
+		}
+
+		if (file_exists($sitepage->path.'/script.js')) {
+
+			unlink($sitepage->path.'/script.js');
+
+		}
+
+		if (file_exists($sitepage->path.'/dependencies.json')) {
+
+			unlink($sitepage->path.'/dependencies.json');
+
+		}
+
+		if (file_exists($sitepage->path)) {
+
+			unlink($sitepage->path);
+
+		}
+
+	}
+
+
 	//
 	// /**
 	//  * update_term_dependency
@@ -1234,8 +1608,6 @@ Class Karma_Cache {
 	// }
 	//
 
-
-
 	/**
 	 * @hook 'save_post'
 	 */
@@ -1243,66 +1615,103 @@ Class Karma_Cache {
 
 		if ($this->is_post_type_single_cacheable($post->post_type)) {
 
-			if ($post->post_type === 'page') {
+			$url = $this->get_post_query($post);
+			$path = $this->get_post_cache_path($post);
 
-				$url = '?page_id='.$post->ID;
+			if ($post->post_status === 'publish') {
+
+				if ($post->post_parent) {
+
+					$parent_post = get_post($post->post_parent);
+					$parent_url = $this->get_post_query($parent_post);
+
+				} else {
+
+					$parent_url = '';
+
+				}
+
+				$this->update_sitepage($url, $path, $parent_url);
+
+				do_action('karma_htmlcache_update_post_sitepage', $post, $url, $path, $parent_url, $this);
 
 			} else {
 
-				$url = '?p='.$post->ID.'&post_type='.$post->post_type;
+				$this->remove_sitepage($url);
+
+				do_action('karma_htmlcache_remove_post_sitepage', $post, $url, $this);
 
 			}
-
-			$this->update_object_dependency($url, $post->ID, 'post', $post->post_type);
 
 		}
 
 		if ($this->is_post_type_archive_cacheable($post->post_type)) {
 
-			$url = '?post_type='.$post->post_type;
+			$url = $this->get_archive_query($post->post_type);
+			$path = $this->get_archive_cache_path($post->post_type);
 
-			$this->update_object_dependency($url, $post->ID, 'post', $post->post_type);
+			$this->update_sitepage($url, $path);
+
+			do_action('karma_htmlcache_update_archive_sitepage', $post, $url, $path, $this);
 
 		}
 
 
-		if ($update) {
 
-			$this->update_object('post', $post->post_type, $post_id);
+		$this->update_object('post', $post->post_type, $post_id);
 
-		} else {
 
-			$this->create_object('post', $post->post_type, $post_id);
-		}
+
+		// if ($update) {
+		//
+		// 	$this->update_object('post', $post->post_type, $post_id);
+		//
+		// } else {
+		//
+		// 	$this->create_object('post', $post->post_type, $post_id);
+		//
+		// }
 
 	}
 
 	/**
 	 * @hook 'before_delete_post'
 	 */
-	function before_delete_post($post_id) {
+	function delete_post($post_id) {
 
 		$post = get_post($post_id);
 
-		// -> need to remove all dependencies to self and delete page cache now!
+		if ($this->is_post_type_single_cacheable($post->post_type)) {
 
+			$url = $this->get_post_query($post);
+
+			$this->remove_sitepage($url);
+
+			do_action('karma_htmlcache_remove_post_sitepage', $post, $url, $this);
+
+		}
 
 		$this->delete_object('post', $post->post_type, $post_id);
 
 	}
 
 	/**
-	 * @hook 'edit_term'
+	 * @hook 'edit_term', 'create_term'
 	 */
 	function edit_term($term_id, $tt_id, $taxonomy) {
+
+
 
 		if ($this->is_taxonomy_cacheable($taxonomy)) {
 
 			$term = get_term($term_id, $taxonomy);
 
-			$url = '?taxonomy='.$taxonomy.'&term='.$term->slug;
+			$url = $this->get_term_query($term);
+			$path = $this->get_term_cache_path($term);
 
-			$this->update_object_dependency($url, $term->term_id, 'term', $taxonomy);
+			$this->update_sitepage($url, $path);
+
+			do_action('karma_htmlcache_update_term_sitepage', $term, $url, $path, $this);
 
 		}
 
@@ -1313,26 +1722,39 @@ Class Karma_Cache {
 	/**
 	 * @hook 'create_term'
 	 */
-	function create_term($term_id, $tt_id, $taxonomy) {
-
-		if ($this->is_taxonomy_cacheable($taxonomy)) {
-
-			$term = get_term($term_id, $taxonomy);
-
-			$url = '?taxonomy='.$taxonomy.'&term='.$term->slug;
-
-			$this->update_object_dependency($url, $term->term_id, 'term', $taxonomy);
-
-		}
-
-		$this->create_object('term', $taxonomy, $term_id);
-
-	}
+	// function create_term($term_id, $tt_id, $taxonomy) {
+	//
+	// 	if ($this->is_taxonomy_cacheable($taxonomy)) {
+	//
+	// 		$term = get_term($term_id, $taxonomy);
+	//
+	// 		$url = $this->get_term_query($term);
+	// 		$path = $this->get_term_cache_path($term);
+	//
+	// 		$this->update_sitepage($url, $path);
+	//
+	// 	}
+	//
+	// 	$this->create_object('term', $taxonomy, $term_id);
+	//
+	// }
 
 	/**
 	 * @hook 'pre_delete_term'
 	 */
 	function pre_delete_term($term, $taxonomy) {
+
+		if ($this->is_taxonomy_cacheable($taxonomy)) {
+
+			$term = get_term($term_id, $taxonomy);
+
+			$url = $this->get_term_query($term);
+
+			$this->remove_sitepage($url);
+
+			do_action('karma_htmlcache_remove_term_sitepage', $term, $url, $this);
+
+		}
 
 		$this->delete_object('term', $taxonomy, $term->term_id);
 	}
@@ -1341,39 +1763,58 @@ Class Karma_Cache {
 	/**
 	 * @hook 'karma_cache_create_object'
 	 */
-	function create_object($object, $type, $id) {
-		global $wpdb;
+	function create_object($object, $type, $id = 0) {
 
-		$table = $wpdb->prefix.$this->dependency_table;
-
-		$wpdb->query($wpdb->prepare(
-			"UPDATE $table
-			SET status = %d
-			WHERE object = %s AND type = %s",
-			1,
-			$object,
-			$type
-		));
+		$this->update_object($object, $type);
+		// global $wpdb;
+		//
+		// $table = $wpdb->prefix.$this->dependency_table;
+		//
+		// $wpdb->query($wpdb->prepare(
+		// 	"UPDATE $table
+		// 	SET status = %d
+		// 	WHERE object = %s AND type = %s",
+		// 	1,
+		// 	$object,
+		// 	$type
+		// ));
 
 	}
 
 	/**
 	 * @hook 'karma_cache_update_object'
 	 */
-	function update_object($object, $type, $id) {
+	function update_object($object, $type, $id = 0) {
 		global $wpdb;
 
-		$table = $wpdb->prefix.$this->dependency_table;
+		$dependency_table = $wpdb->prefix.$this->dependency_table;
+		$sitepage_table = $wpdb->prefix.$this->sitepage_table;
+
+		// $sitepage_id = $wpdb->get_col($wpdb->prepare(
+		// 	"SELECT page_id FROM $dependency_table WHERE object = %s AND (object_id = %d OR type = %s)",
+		// 	$object,
+		// 	$id,
+		// 	$type
+		// ));
+
 
 		$wpdb->query($wpdb->prepare(
-			"UPDATE $table
-			SET status = %d
-			WHERE object = %s AND (object_id = %d OR type = %s)",
-			1,
+			"UPDATE $sitepage_table AS sp
+			JOIN $dependency_table AS d ON (d.page_id = sp.id)
+			SET sp.status = GREATEST(sp.status, d.stress)
+			WHERE d.object = %s AND d.type = %s AND (d.object_id = %d OR d.object_id = 0)",
 			$object,
-			$id,
-			$type
+			$type,
+			$id
 		));
+
+
+
+		// if ($sitepage_id) {
+		//
+		// 	$this->outdate_sitepage($sitepage_id);
+		//
+		// }
 
 	}
 
@@ -1381,20 +1822,17 @@ Class Karma_Cache {
 	 * @hook 'karma_cache_delete_object'
 	 */
 	function delete_object($object, $type, $id) {
-		global $wpdb;
 
-		$table = $wpdb->prefix.$this->dependency_table;
+		$this->update_object($object, $type, $id);
+
+		$dependency_table = $wpdb->prefix.$this->dependency_table;
 
 		$wpdb->query($wpdb->prepare(
-			"UPDATE $table
-			SET status = %d
-			WHERE object = %s AND (object_id = %d OR type = %s)",
-			2,
+			"DELETE FROM $dependency_table WHERE object = %s AND type = %s AND object_id = %d)",
 			$object,
-			$id,
-			$type
+			$type,
+			$id
 		));
-
 
 	}
 
@@ -1461,6 +1899,7 @@ Class Karma_Cache {
 	public function print_scripts($scripts, $internal = false) {
 		global $wp_scripts;
 
+
 		$key = implode(',', $scripts);
 		// $js_filename = md5($key) . '.js';
 		$l10n = '';
@@ -1517,7 +1956,25 @@ Class Karma_Cache {
 
 				$this->files['script.js'] = $js;
 
-				echo '<script type="text/javascript" src="script.js"></script>';
+				// $path = str_replace(get_option('home'), rtrim(ABSPATH, '/').'/cache', $this->current_path);
+
+				// $this->log($path.'script.js');
+				//
+				// file_put_contents($path.'script.js', $js);
+
+
+				// $this->log($path.'script.js');
+				//
+
+				$path = home_url();
+
+				if ($this->sitepage->path) {
+
+					$path .= '/'.$this->sitepage->path.;
+
+				}
+
+				echo '<script type="text/javascript" src="'.$path.'/script.js"></script>';
 
 			}
 
@@ -1627,18 +2084,95 @@ Class Karma_Cache {
 	//
 	// }
 
+	// /**
+	//  * rebuild cache
+	//  */
+	// public function get_all_resources() {
+	// 	global $wpdb;
+	//
+	// 	$items = array();
+	//
+	// 	$items[] = array(
+	// 		'url' => '',
+	// 		'action' => 'karma_cache_regenerate_url'
+	// 	);
+	//
+	// 	$post_types = array_filter(get_post_types(), array($this, 'is_post_type_single_cacheable'));
+	//
+	// 	if ($post_types) {
+	//
+	// 		$post_types_sql = implode("','", array_map('esc_sql', $post_types));
+	//
+	// 		$results = $wpdb->get_results("SELECT ID, post_type FROM $wpdb->posts
+	// 			WHERE post_type IN ('$post_types_sql') AND post_status = 'publish'");
+	//
+	// 		foreach ($results as $result) {
+	//
+	// 			$items[] = array(
+	// 				'url' => $this->get_post_query($result),
+	// 				'action' => 'karma_cache_regenerate_url'
+	// 			);
+	//
+	// 		}
+	//
+	// 	}
+	//
+	// 	$post_types = array_filter(get_post_types(), array($this, 'is_post_type_archive_cacheable'));
+	//
+	// 	if ($post_types) {
+	//
+	// 		foreach ($post_types as $post_type) {
+	//
+	// 			$items[] = array(
+	// 				'url' => $this->get_archive_query($post_type),
+	// 				'action' => 'karma_cache_regenerate_url'
+	// 			);
+	//
+	// 		}
+	//
+	// 	}
+	//
+	// 	$taxonomies = array_filter(get_taxonomies(), array($this, 'is_taxonomy_cacheable'));
+	//
+	// 	if ($taxonomies) {
+	//
+	// 		$taxonomies_sql = implode("','", array_map('esc_sql', $taxonomies));
+	//
+	// 		$terms = $wpdb->get_results("SELECT tt.taxonomy, t.slug FROM $wpdb->term_taxonomy AS tt
+	// 			JOIN $wpdb->terms AS t ON (t.term_id = tt.term_id)
+	// 			WHERE tt.taxonomy IN ('$taxonomies_sql')");
+	//
+	// 		foreach ($terms as $term) {
+	//
+	// 			$items[] = array(
+	// 				'url' => $this->get_term_query($term),
+	// 				'action' => 'karma_cache_regenerate_url'
+	// 			);
+	//
+	// 		}
+	//
+	// 	}
+	//
+	// 	$items = apply_filters('karma_htmlcache_items_to_update', $items);
+	//
+	// 	// echo '<pre>';
+	// 	// print_r($items);
+	// 	// die();
+	//
+	// 	return $items;
+	// }
+
 	/**
 	 * rebuild cache
 	 */
-	public function get_all_resources() {
+	public function create_sitemap() {
 		global $wpdb;
 
 		$items = array();
 
-		$items[] = array(
-			'url' => '',
-			'action' => 'karma_cache_regenerate_url'
-		);
+		$this->update_sitepage('', '');
+
+		do_action('karma_htmlcache_update_home_sitepage', '', '', $this);
 
 		$post_types = array_filter(get_post_types(), array($this, 'is_post_type_single_cacheable'));
 
@@ -1646,15 +2180,30 @@ Class Karma_Cache {
 
 			$post_types_sql = implode("','", array_map('esc_sql', $post_types));
 
-			$results = $wpdb->get_results("SELECT ID, post_type FROM $wpdb->posts
-				WHERE post_type IN ('$post_types_sql') AND post_status = 'publish'");
+			$posts = $wpdb->get_results(
+				"SELECT * FROM $wpdb->posts
+				WHERE post_type IN ('$post_types_sql') AND post_status = 'publish'"
+			);
 
-			foreach ($results as $result) {
+			foreach ($posts as $post) {
 
-				$items[] = array(
-					'url' => $this->get_post_query($result),
-					'action' => 'karma_cache_regenerate_url'
-				);
+				$url = $this->get_post_query($post);
+				$path = $this->get_post_cache_path($post);
+
+				if ($post->post_parent) {
+
+					$parent_post = get_post($post->post_parent);
+					$parent_url = $this->get_post_query($parent_post);
+
+				} else {
+
+					$parent_url = '';
+
+				}
+
+				$this->update_sitepage($url, $path, $parent_url);
+
+				do_action('karma_htmlcache_update_post_sitepage', $post, $url, $path, $parent_url, $this);
 
 			}
 
@@ -1666,10 +2215,12 @@ Class Karma_Cache {
 
 			foreach ($post_types as $post_type) {
 
-				$items[] = array(
-					'url' => $this->get_archive_query($post_type),
-					'action' => 'karma_cache_regenerate_url'
-				);
+				$url = $this->get_archive_query($post_type);
+				$path = $this->get_archive_cache_path($post_type);
+
+				$this->update_sitepage($url, $path);
+
+				do_action('karma_htmlcache_update_archive_sitepage', $post_type, $url, $path, $this);
 
 			}
 
@@ -1687,16 +2238,18 @@ Class Karma_Cache {
 
 			foreach ($terms as $term) {
 
-				$items[] = array(
-					'url' => $this->get_term_query($term),
-					'action' => 'karma_cache_regenerate_url'
-				);
+				$url = $this->get_term_query($term);
+				$path = $this->get_term_cache_path($term);
+
+				$this->update_sitepage($url, $path);
+
+				do_action('karma_htmlcache_update_term_sitepage', $term, $url, $path, $this);
 
 			}
 
 		}
 
-		$items = apply_filters('karma_htmlcache_items_to_update', $items);
+		// $items = apply_filters('karma_htmlcache_items_to_update', $items);
 
 		// echo '<pre>';
 		// print_r($items);
@@ -1708,44 +2261,44 @@ Class Karma_Cache {
 	/**
 	 * @filter 'karma_rebuild_all_task'
 	 */
-	public function rebuild_all_task($task) {
-		global $karma;
-
-		if (empty($task)) {
-
-			if ($karma->options->get_option('htmlcache_rebuild', false)) {
-
-				$task = array(
-					'name' => 'HTML Rebuild All Cache',
-					'items' => $this->get_all_resources()
-				);
-
-				$karma->options->update_option('htmlcache_rebuild', false);
-			}
-
-		}
-
-		return $task;
-	}
+	// public function rebuild_all_task($task) {
+	// 	global $karma;
+	//
+	// 	if (empty($task)) {
+	//
+	// 		if ($karma->options->get_option('htmlcache_rebuild', false)) {
+	//
+	// 			$task = array(
+	// 				'name' => 'HTML Rebuild All Cache',
+	// 				'items' => $this->get_all_resources()
+	// 			);
+	//
+	// 			$karma->options->update_option('htmlcache_rebuild', false);
+	// 		}
+	//
+	// 	}
+	//
+	// 	return $task;
+	// }
 
 	/**
 	 * @ajax 'karma_htmlcache_flush'
 	 */
 	public function ajax_flush() {
-		global $karma;
+		global $karma, $wpdb;
 
 		$output = array();
 
-	//	$this->remove_cache();
-		$karma->options->update_option('htmlcache_rebuild', true);
 
+		$sitepage_table = $wpdb->prefix.$this->sitepage_table;
+		$dependency_table = $wpdb->prefix.$this->dependency_table;
 
-		// $table = $wpdb->prefix.$this->dependency_table;
-		//
-		// $wpdb->query($wpdb->prepare(
-		// 	"UPDATE $table SET status = %d",
-		// 	1
-		// ));
+		$wpdb->query("truncate $sitepage_table");
+		$wpdb->query("truncate $dependency_table");
+
+		$this->create_sitemap();
+
+		$output['flush'] = 'done';
 
 		echo json_encode($output);
 		exit;
@@ -1765,7 +2318,7 @@ Class Karma_Cache {
 				'title' => 'Update HTML Cache',
 				'href'  => '#',
 				'meta'  => array(
-					'onclick' => 'ajaxGet(KarmaTaskManager.ajax_url, {action: "karma_htmlcache_flush"}, function(results) {KarmaTaskManager.update();});event.preventDefault();'
+					'onclick' => 'ajaxGet(KarmaTaskManager.ajax_url, {action: "karma_htmlcache_flush"}, function(results) {KarmaTaskManager.update();console.log(results);});event.preventDefault();'
 				)
 			));
 
@@ -1773,33 +2326,42 @@ Class Karma_Cache {
 
 	}
 
+
+
 	/**
-	 * @filter 'mod_rewrite_rules'
+	 * @hook 'mod_rewrite_rules'
 	 */
-	// public function mod_rewrite_rules($rules) {
-	// 	global $wp_rewrite;
-	//
-	// 	// $home_root = parse_url(home_url());
-	// 	//
-  //   // if (isset($home_root['path'])) {
-	// 	//
-  //   //   $home_root = trailingslashit($home_root['path']);
-	// 	//
-  //   // } else {
-	// 	//
-  //   //   $home_root = '/';
-	// 	//
-  //   // }
-	//
-	// 	$original_rules = "RewriteCond %{REQUEST_FILENAME} !-d";
-	//
-	// 	$new_rules = "RewriteCond %{REQUEST_FILENAME} !-d [OR]\n".
-	// 	"RewriteCond %{QUERY_STRING} >''";
-	//
-	// 	$rules = str_replace($original_rules, $new_rules, $rules);
-	//
-	// 	return $rules;
-	// }
+	public function mod_rewrite( $rules ) {
+		global $karma, $wp_rewrite;
+
+		if ($karma->options->get_option('html_cache')) {
+
+			$home_root = parse_url( home_url() );
+	    if ( isset( $home_root['path'] ) ) {
+	        $home_root = trailingslashit( $home_root['path'] );
+	    } else {
+	        $home_root = '/';
+	    }
+
+			// $rules = str_replace("RewriteRule . {$home_root}{$wp_rewrite->index} [L]", "RewriteRule ^(.*)$ cache/$1 [L]", $rules);
+
+			$rules = "<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase {$home_root}
+RewriteRule ^index\.php$ - [L]
+RewriteRule ^{$this->cache_directory}.*$ - [L]
+RewriteRule ^$ cache/ [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ {$this->cache_directory}$1 [L]
+</IfModule>";
+
+		}
+
+		return $rules;
+	}
+
+
 
 }
 

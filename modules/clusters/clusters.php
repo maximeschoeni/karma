@@ -106,13 +106,13 @@ class Karma_Clusters {
 
 		$cluster = new stdClass();
 
-		require_once get_template_directory() . '/modules/clusters/dependencies.php';
-
-		$dependencies = new Karma_Cluster_Dependencies($post_id, $this->dependency_table);
-
-		$dependencies->add_id('post', $post_id);
-
-		$this->update_cache($post_id, $post_type, $cluster);
+		// require_once get_template_directory() . '/modules/clusters/dependencies.php';
+		//
+		// $dependencies = new Karma_Cluster_Dependencies($post_id, $this->dependency_table);
+		//
+		// $dependencies->add_id('post', $post_id);
+		//
+		// $this->update_cache($post_id, $post_type, $cluster);
 
 		do_action('karma_cluster_create_object', 'cluster', $post_type, $post_id);
 
@@ -128,13 +128,15 @@ class Karma_Clusters {
 
 		if ($post) {
 
-			$cluster = $this->get_cache($post_id, $post->post_type);
+			// $cluster = $this->get_cache($post_id, $post->post_type);
+			//
+			// if (!$cluster) {
+			//
+			// 	$cluster = $this->create_cluster($post_id, $post->post_type);
+			//
+			// }
 
-			if (!$cluster) {
-
-				$cluster = $this->create_cluster($post_id, $post->post_type);
-
-			}
+			$cluster = new stdClass();
 
 			if (isset($this->post_types[$post->post_type]) && is_callable($this->post_types[$post->post_type])) {
 
@@ -145,6 +147,8 @@ class Karma_Clusters {
 				$dependencies->add_id('post', $post_id);
 
 				call_user_func($this->post_types[$post->post_type], $cluster, $post, $dependencies, $this);
+
+				$dependencies->update();
 
 			}
 
@@ -769,7 +773,8 @@ class Karma_Clusters {
 
 			if (isset($this->post_types[$post->post_type])) {
 
-				$this->create_cluster($post->ID, $post->post_type);
+				// $this->create_cluster($post->ID, $post->post_type);
+				$this->update_cluster($post->ID);
 
 			}
 
@@ -997,7 +1002,7 @@ class Karma_Clusters {
 		$wpdb->query($wpdb->prepare(
 			"UPDATE $table
 			SET status = %d
-			WHERE object = %s AND (object_id = %d OR type = %s AND context = '*')",
+			WHERE object = %s AND (object_id = %d OR type = %s)",
 			1,
 			$object,
 			$id,
@@ -1045,7 +1050,7 @@ class Karma_Clusters {
 		$wpdb->query($wpdb->prepare(
 			"UPDATE $table
 			SET status = %d
-			WHERE object = %s AND (object_id = %d OR type = %s AND context = '*')",
+			WHERE object = %s AND (object_id = %d OR type = %s)",
 			2,
 			$object,
 			$id,

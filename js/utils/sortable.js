@@ -106,7 +106,7 @@ function createSortableManager() {
 		manager.test(draggedElement, x, y, function(dragFrom, dragTo) {
 			manager.container.removeChild(placeholder);
 			manager.container.insertBefore(placeholder, manager.container.children[dragTo]);
-			if (manager.onStartDrag) {
+			if (manager.onChange) {
 				manager.onChange(dragFrom, dragTo);
 			}
 		});

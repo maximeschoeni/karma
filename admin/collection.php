@@ -69,7 +69,7 @@ class Karma_Collection {
 
 		foreach ($this->items as $item) {
 
-			if ($item->$key !== $value)) {
+			if ($item->$key !== $value) {
 
 				$new_items[] = $item;
 

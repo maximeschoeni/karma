@@ -9,12 +9,14 @@ class Karma_Cluster_Dependencies {
 	// var $term_dependencies = array();
 
 	var $dependency_table;
+	var $dependency_ids;
 
 	public function __construct($post_id, $dependency_table) {
 
+		$this->dependency_ids = array();
 		$this->dependency_table = $dependency_table;
 		$this->post_id = $post_id;
-		$this->clear($post_id);
+		// $this->clear($post_id);
 
 
 
@@ -25,13 +27,27 @@ class Karma_Cluster_Dependencies {
 	 * clear dependencies
 	 */
 	public function update() {
-		// global $karma;
-		//
-		// $dependencies = $karma->options->get_option('dependencies', array());
-		// $dependencies[$this->post_id]['posts'] = array_unique($this->post_dependencies);
-		// $dependencies[$this->post_id]['terms'] = array_unique($this->term_dependencies);
-		//
-		// $karma->options->update_option('dependencies', $dependencies);
+		global $wpdb;
+
+		$table = $wpdb->prefix.$this->dependency_table;
+
+		if ($this->dependency_ids) {
+
+			$sql_ids = implode(',', array_map('intval', $this->dependency_ids));
+
+			$wpdb->query($wpdb->prepare("DELETE FROM $table
+				WHERE target_id = %d AND id NOT IN ($sql_ids)",
+				$this->post_id
+			));
+
+		} else {
+
+			$wpdb->query($wpdb->prepare("DELETE FROM $table
+				WHERE target_id = %d",
+				$this->post_id
+			));
+
+		}
 
 	}
 
@@ -40,16 +56,16 @@ class Karma_Cluster_Dependencies {
 	 *
 	 * clear dependencies
 	 */
-	public function clear($post_id) {
-		global $wpdb;
-
-		$wpdb->delete($wpdb->prefix.$this->dependency_table, array(
-			'target_id' => $post_id,
-		), array(
-			'%d'
-		));
-
-	}
+	// public function clear($post_id) {
+	// 	global $wpdb;
+	//
+	// 	$wpdb->delete($wpdb->prefix.$this->dependency_table, array(
+	// 		'target_id' => $post_id,
+	// 	), array(
+	// 		'%d'
+	// 	));
+	//
+	// }
 
 	/**
 	 * add post_type dependency
@@ -57,17 +73,32 @@ class Karma_Cluster_Dependencies {
 	public function add_type($object, $type, $context = '') {
 		global $wpdb;
 
-		$wpdb->insert($wpdb->prefix.$this->dependency_table, array(
-			'target_id' => $this->post_id,
-			'object' => $object,
-			'type' => $type,
-			'context' => $context
-		), array(
-			'%d',
-			'%s',
-			'%s',
-			'%s'
+		$table = $wpdb->prefix.$this->dependency_table;
+
+		$dependency_id = $wpdb->get_var($wpdb->prepare(
+			"SELECT id FROM $table WHERE target_id = %d AND object = %s AND type = %s",
+			$this->post_id,
+			$object,
+			$type
 		));
+
+		if (!$dependency_id) {
+
+			$wpdb->insert($table, array(
+				'target_id' => $this->post_id,
+				'object' => $object,
+				'type' => $type
+			), array(
+				'%d',
+				'%s',
+				'%s'
+			));
+
+			$dependency_id = $wpdb->insert_id;
+
+		}
+
+		$this->dependency_ids[] = $dependency_id;
 
 	}
 
@@ -77,15 +108,32 @@ class Karma_Cluster_Dependencies {
 	public function add_id($object, $id) {
 		global $wpdb;
 
-		$wpdb->insert($wpdb->prefix.$this->dependency_table, array(
-			'target_id' => $this->post_id,
-			'object' => $object,
-			'object_id' => $id
-		), array(
-			'%d',
-			'%s',
-			'%d'
+		$table = $wpdb->prefix.$this->dependency_table;
+
+		$dependency_id = $wpdb->get_var($wpdb->prepare(
+			"SELECT id FROM $table WHERE target_id = %d AND object = %s AND object_id = %d",
+			$this->post_id,
+			$object,
+			$id
 		));
+
+		if (!$dependency_id) {
+
+			$wpdb->insert($wpdb->prefix.$this->dependency_table, array(
+				'target_id' => $this->post_id,
+				'object' => $object,
+				'object_id' => $id
+			), array(
+				'%d',
+				'%s',
+				'%d'
+			));
+
+			$dependency_id = $wpdb->insert_id;
+
+		}
+
+		$this->dependency_ids[] = $dependency_id;
 
 	}
 
