@@ -248,7 +248,7 @@ class Karma_HTMLCache_Multilanguage {
 	public function get_term_path($term, $language, $fallback = null) {
  		global $sublanguage_admin;
 
- 		if (isset($sublanguage_admin) && $sublanguage_admin->is_post_type_translatable($post_type)) {
+ 		if (isset($sublanguage_admin) && $sublanguage_admin->is_taxonomy_translatable($term->taxonomy)) {
 
  			$path = $sublanguage_admin->translate_term_field($term, $term->taxonomy, 'slug', $language, $term->slug);
 
@@ -290,7 +290,7 @@ class Karma_HTMLCache_Multilanguage {
 
 				if ($sublanguage_admin->is_sub($language)) {
 
-					$path = $path.'en';
+					$path = $language->post_name;
 					$url = add_query_arg(array('language' => $language->post_name), $url);
 
 					$karma_cache->update_sitepage($url, $path);

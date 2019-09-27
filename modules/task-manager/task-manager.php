@@ -14,7 +14,7 @@ class Karma_Task_Manager {
 
 		add_action('admin_enqueue_scripts', array($this, 'admin_enqueue_scripts'));
 
-		add_action('wp_ajax_karma_get_task', array($this, 'ajax_get_task'));
+		add_action('wp_ajax_karma_task', array($this, 'ajax_task'));
 
 	}
 
@@ -24,7 +24,7 @@ class Karma_Task_Manager {
 	function admin_enqueue_scripts( $hook ) {
 		global $karma;
 
-	  wp_enqueue_script('task-manager', get_template_directory_uri() . '/modules/task-manager/js/task-manager.js', array('ajax', 'custom-dispatcher'), $karma->version, true);
+	  wp_enqueue_script('task-manager', get_template_directory_uri() . '/modules/task-manager/js/task-manager.js', array('ajax'), $karma->version, true);
 
 		wp_localize_script('task-manager', 'KarmaTaskManager', array(
 			'ajax_url' => admin_url('admin-ajax.php'),
@@ -34,9 +34,9 @@ class Karma_Task_Manager {
 	}
 
 	/**
-	 * @ajax 'karma_get_task'
+	 * @ajax 'karma_task'
 	 */
-	public function ajax_get_task() {
+	public function ajax_task() {
 		global $karma;
 
 		// $output = array();
@@ -47,6 +47,12 @@ class Karma_Task_Manager {
 		//
 		// 	$output = $task;
 		//
+		// }
+
+		// if (!$output) {
+		//
+		// 	$output['done'] = true;
+		// 	$output['notice'] = 'Done.';
 		// }
 
 		echo json_encode($output);
@@ -60,7 +66,7 @@ class Karma_Task_Manager {
 	 * @hook 'wp_loaded'
 	 */
 	function print_notice() {
-		global $karma;
+		global $karma, $dependencies;
 
 		// $tasks = apply_filters('karma_task', array());
 		//
