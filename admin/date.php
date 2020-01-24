@@ -102,7 +102,7 @@ class Karma_Date {
   /**
    * get date range from sql dates
    */
-  static function format_range($date1, $date2) {
+  static function format_range($date1, $date2, $sep = ' — ') {
 
     $t1 = self::parse($date1);
     $t2 = self::parse($date2);
@@ -124,19 +124,19 @@ class Karma_Date {
 
         } else {
 
-          return date('d', $t1) . ' — ' . date('d.m.Y', $t2);
+          return date('d', $t1) . $sep . date('d.m.Y', $t2);
 
         }
 
       } else {
 
-        return date('d.m', $t1) . ' — ' . date('d.m.Y', $t2);
+        return date('d.m', $t1) . $sep . date('d.m.Y', $t2);
 
       }
 
     } else {
 
-      return date('d.m.Y', $t1) . ' — ' . date('d.m.Y', $t2);
+      return date('d.m.Y', $t1) . $sep . date('d.m.Y', $t2);
 
     }
 

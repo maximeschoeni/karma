@@ -12,13 +12,19 @@ class Karma_Background_Image_Compat {
 
 		$metadata = wp_get_attachment_metadata($attachement_id);
 
-		$sources = apply_filters('background-image-manager-sources', array(array(
-			'src' => wp_get_attachment_url($attachement_id),
-			'width' => $metadata['width'],
-			'height' => $metadata['height']
-		)), $attachement_id);
+		if ($metadata) {
 
-		return $sources;
+			$sources = apply_filters('background-image-manager-sources', array(array(
+				'src' => wp_get_attachment_url($attachement_id),
+				'width' => $metadata['width'],
+				'height' => $metadata['height']
+			)), $attachement_id);
+
+			return $sources;
+
+		}
+
+		return array();
 	}
 
 	/**
@@ -37,6 +43,21 @@ class Karma_Background_Image_Compat {
 		return $images;
 	}
 
+	/**
+	 * print image
+	 */
+	public function print_image($image_id, $size = 'cover', $postion = 'center') {
+
+		echo apply_filters(
+			'background-image',
+			'<div style="width:100%;height:100%;background-image:url('.wp_get_attachment_url($image_id).');background-size:'.$size.';background-position:'.$postion.'"></div>',
+			$image_id,
+			$size,
+			$postion,
+			array('class' => 'background-image'));
+
+	}
+
 }
 
 global $karma_background_image_compat;
@@ -51,4 +72,9 @@ function karma_get_images_data($attachement_ids) {
 	global $karma_background_image_compat;
 
 	return $karma_background_image_compat->get_images_data($attachement_ids);
+}
+function karma_print_image($image_id, $size = 'cover', $postion = 'center') {
+	global $karma_background_image_compat;
+
+	return $karma_background_image_compat->print_image($image_id, $size, $postion);
 }

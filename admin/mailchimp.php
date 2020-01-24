@@ -121,21 +121,10 @@ class Karma_Mailchimp {
 
 			}
 
-			$api_key = $karma->options->get_option('mailchimp_key');
-			$list_id = $karma->options->get_option('mailchimp_id');
+			$results = $this->subscribe_mailchimp($data);
 
-			if ($api_key && $list_id) {
-
-				$results = $this->subscribe_mailchimp($data);
-
-				$output['mailchimps'] = $results;
-				$output['success'] = $results['http_code'] === 200;
-
-			} else {
-
-				$output['error'] = 'API Key/List ID not set';
-
-			}
+			$output['mailchimps'] = $results;
+			$output['success'] = $results['http_code'] === 200;
 
 		} else {
 
@@ -154,7 +143,17 @@ class Karma_Mailchimp {
 	/**
 	 * Subscribe Mailchimps
 	 */
-	public function subscribe_mailchimp($data, $api_key, $list_id) {
+	public function subscribe_mailchimp($data) {
+		global $karma;
+
+		$api_key = $karma->options->get_option('mailchimp_key');
+		$list_id = $karma->options->get_option('mailchimp_id');
+
+		if (!$api_key || !$list_id) {
+
+			trigger_error('API Key/List ID not set');
+
+		}
 
 		$member_id = md5(strtolower($email));
 		$data_center = substr($api_key,strpos($api_key,'-')+1);

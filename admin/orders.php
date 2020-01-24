@@ -40,7 +40,7 @@ class Karma_Orders {
 	public function create_log_table(){
 		global $wpdb, $karma;
 
-		$table_version = '002';
+		$table_version = '003';
 
 		if ($table_version !== $karma->options->get_option('orders_table_version')) {
 
@@ -70,20 +70,12 @@ class Karma_Orders {
 				city varchar(50) NOT NULL,
 				country varchar(50) NOT NULL,
 				price float NOT NULL DEFAULT '0',
+				shipping float NOT NULL DEFAULT '0',
 				currency varchar(4) NOT NULL,
 				items text NOT NULL,
 				notes text NOT NULL,
 				meta text NOT NULL
 			) $charset_collate;";
-
-			// demail varchar(50) NOT NULL,
-			// dfirstname varchar(50) NOT NULL,
-			// dlastname varchar(50) NOT NULL,
-			// dphone varchar(50) NOT NULL,
-			// daddress varchar(100) NOT NULL,
-			// dzip varchar(10) NOT NULL,
-			// dcity varchar(50) NOT NULL,
-			// dcountry varchar(50) NOT NULL,
 
 			require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 			dbDelta($mysql);

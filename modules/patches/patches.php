@@ -83,13 +83,9 @@ class Karma_Patches {
 			$start = strpos($content, $tag);
 			$end = strpos($content, $end_tag, $start+strlen($tag));
 
-			$patch_content = substr($content, $start, $end-$start+strlen($end_tag));
+			$patch_content = substr($content, $start, $end+strlen($end_tag)-$start);
 
-			$depth = substr_count($karma_cache->sitepage->path, '/')+($karma_cache->sitepage->path ? 1 : 0)+1;
-
-			$file = str_repeat("../", $depth).'wp-content'.$path;
-
-			$content = str_replace($patch_content, "<?php include '$file'; ?>", $content);
+			$content = str_replace($patch_content, "<?php include KARMA_CACHE_ROOT.'/wp-content/$path'; ?>", $content);
 
 		}
 
@@ -102,149 +98,55 @@ class Karma_Patches {
 	public function print_patch($request, $name, $no_cache = false) {
 		global $wpdb, $karma;
 
-		$include = get_stylesheet_directory().'/'.$request;
+		if (!$no_cache) {
 
-		$path = apply_filters('karma_patch_path', $name);
+			$path = apply_filters('karma_patch_path', $name);
 
-		if (file_exists(WP_CONTENT_DIR.'/'.$this->path.'/'.$path.'/patch.php')) {
+			if (file_exists(WP_CONTENT_DIR.'/'.$this->path.'/'.$path.'/patch.php')) {
 
-			$include = WP_CONTENT_DIR.'/'.$this->path.'/'.$path.'/patch.php';
+				$include = $this->path.'/'.$path.'/patch.php';
 
-		} else if ($karma->options->get_option('patches_active') && !$no_cache) {
+			} else if ($karma->options->get_option('patches_active')) {
 
-			$table = $wpdb->prefix.$this->table_name;
+				$table = $wpdb->prefix.$this->table_name;
 
-			$patch = $wpdb->get_row($wpdb->prepare(
-				"SELECT * FROM $table WHERE path = %s",
-				$path
-			));
+				$patch = $wpdb->get_row($wpdb->prepare(
+					"SELECT * FROM $table WHERE path = %s",
+					$path
+				));
 
-			if (!$patch) {
+				if (!$patch) {
 
-				$patch = $this->create_patch($request, $path);
+					$patch = $this->create_patch($request, $path);
 
-			}
+				}
 
-			if ($patch->active) {
+				if ($patch->active) {
 
-				$this->rebuild_patch($patch);
+					$this->rebuild_patch($patch);
 
-				$include = WP_CONTENT_DIR.'/'.$this->path.'/'.$patch->path.'/patch.php';
+					$include = $this->path.'/'.$patch->path.'/patch.php';
+
+				}
 
 			}
 
 		}
 
-		echo '<!-- patch:'.str_replace(WP_CONTENT_DIR, '', $include).' -->';
+		if (!isset($include)) {
 
-		include $include;
+			$include = get_stylesheet_directory().'/'.$request;
+			$include = str_replace(WP_CONTENT_DIR.'/', '', $include);
+
+		}
+
+		echo "<!-- patch:$include -->";
+
+		include WP_CONTENT_DIR.'/'.$include;
 
 		echo '<!-- patch -->';
 
 	}
-
-	// /**
-	//  * @hook 'karma_cache_patch'
-	//  */
-	// public function print_patch($request, $name, $no_cache = false) {
-	// 	global $wpdb, $karma, $karma_cache;
-	//
-	// 	if ($karma->options->get_option('patches_active') && !$no_cache) {
-	//
-	// 		$path = apply_filters('karma_patch_path', $name);
-	//
-	// 		echo '<!-- patch:'.$path.' -->';
-	//
-	// 		if ($no_cache) {
-	//
-	// 			include get_template_directory().'/'.$request;
-	//
-	// 		} else if (file_exists($this->patches_path.'/'.$path.'/patch.php')) {
-	//
-	// 			include $this->patches_path.'/'.$path.'/patch.php';
-	//
-	// 		} else {
-	//
-	// 			$table = $wpdb->prefix.$this->table_name;
-	//
-	// 			$patch = $wpdb->get_row($wpdb->prepare(
-	// 				"SELECT * FROM $table WHERE path = %s",
-	// 				$path
-	// 			));
-	//
-	// 			if (!$patch) {
-	//
-	// 				$patch = $patch->create_patch($request, $path);
-	//
-	// 				$this->rebuild_patch($patch);
-	//
-	// 			}
-	//
-	// 			if ($patch->active) {
-	//
-	// 				include $this->patches_path.'/'.$patch->path.'/patch.php';
-	//
-	// 			} else {
-	//
-	// 				include get_template_directory().'/'.$request;
-	//
-	// 			}
-	//
-	// 		}
-	//
-	// 	} else {
-	//
-	// 		include get_template_directory().'/'.$request;
-	//
-	// 	}
-	//
-	// 	echo '<!-- patch -->';
-	//
-	// 	//
-	// 	// 	include $this->patches_path.'/'.$path.'/patch.php';
-	// 	//
-	// 	//
-	// 	// 	if (!$no_cache) {
-	// 	//
-	// 	//
-	// 	//
-	// 	//
-	// 	//
-	// 	// 		if ($patch->active) {
-	// 	//
-	// 	// 			$include_file = "{$this->patches_path}/{$patch->path}/patch.php";
-	// 	//
-	// 	// 			// do_action('karma_cache_build_patch', $patch, );
-	// 	//
-	// 	// 		} else {
-	// 	//
-	// 	// 			$include_file = get_template_directory().'/'.$request;
-	// 	//
-	// 	// 		}
-	// 	//
-	// 	// 	} else {
-	// 	//
-	// 	// 		$include_file = get_template_directory().'/'.$request;
-	// 	//
-	// 	// 	}
-	// 	//
-	// 		// echo "\<?php include '$include_file'; ?\>";
-	// 	//
-	// 	// } else {
-	// 	//
-	// 	// 	if (isset($karma_cache) && isset($karma_cache->dependency_instance)) {
-	// 	//
-	// 	// 		add_action('karma_patch_add_dependency_id', array($karma_cache->dependency_instance, 'add_id'), 10, 4);
-	// 	// 		add_action('karma_patch_add_dependency_ids', array($karma_cache->dependency_instance, 'add_ids'), 10, 4);
-	// 	// 		add_action('karma_patch_add_dependency_type', array($karma_cache->dependency_instance, 'add_type'), 10, 3);
-	// 	//
-	// 	// 	}
-	// 	//
-	// 	// 	include get_template_directory().'/'.$request;
-	// 	//
-	// 	// }
-	//
-	// }
 
 	/**
 	 * rebuild_patch

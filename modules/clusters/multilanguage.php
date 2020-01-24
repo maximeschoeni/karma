@@ -16,6 +16,9 @@ class Karma_Cluster_Multilanguage {
 		add_filter('karma_save_cluster', array($this, 'save_cluster'), 10, 4);
 		add_filter('karma_delete_cluster', array($this, 'delete_cluster'), 10, 4);
 
+		add_filter('karma_update_cluster_query', array($this, 'update_cluster_query'), 10, 3);
+		// add_action('karma_update_cluster', array($this, 'update_cluster'));
+
 	}
 
 	/**
@@ -30,7 +33,8 @@ class Karma_Cluster_Multilanguage {
 
 				if ($sublanguage_admin->is_sub($language)) {
 
-					$t_path = $cluster_row->path.'/'.$language->post_name;
+					// $t_path = $cluster_row->path.'/'.$language->post_name;
+					$t_path  = apply_filters('karma_cluster_uri_sublanguage', $cluster_row->path.'/'.$language->post_name, $post_type, $language);
 
 					$cluster_table = $wpdb->prefix.$clusters->table_name;
 
@@ -188,6 +192,48 @@ class Karma_Cluster_Multilanguage {
 			$query = add_query_arg(array('language' => $language->post_name), $query);
 
 		}
+
+		return $query;
+	}
+
+	/**
+	 * @filter 'karma_update_cluster_query'
+	 */
+	public function update_cluster_query($query, $cluster_row, $clusters) {
+		global $sublanguage, $sublanguage_admin;
+
+		if (isset($sublanguage_admin)) {
+
+			if (isset($query->query[$sublanguage_admin->language_query_var])) {
+
+				$language = $sublanguage_admin->get_language_by($query->query[$sublanguage_admin->language_query_var], 'post_name');
+
+				if (isset($language) && $language) {
+
+					$sublanguage_admin->set_language($language);
+
+				}
+
+			}
+
+		} else if (isset($sublanguage)) {
+
+			if (isset($query->query[$sublanguage->language_query_var])) {
+
+				$language = $sublanguage->get_language_by($query->query[$sublanguage->language_query_var], 'post_name');
+
+				if (isset($language) && $language) {
+
+					$sublanguage->set_language($language);
+
+				}
+
+			}
+
+		}
+
+		remove_filter('sublanguage_postmeta_override', '__return_true');
+
 
 		return $query;
 	}

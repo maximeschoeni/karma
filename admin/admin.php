@@ -331,7 +331,7 @@ class Karma_Admin {
 	 */
 	public function sanitize_file_name( $filename ) {
 
-    return preg_replace('/[^a-zA-Z0-9._-]/', '', remove_accents($filename));
+    return preg_replace('/[^a-zA-Z0-9._-]/', '-', remove_accents($filename));
 
 	}
 

@@ -254,6 +254,8 @@ class Karma_HTMLCache_Multilanguage {
 
  			// todo -> hierarchical taxonomy
 
+			$taxonomy_obj = get_taxonomy($term->taxonomy);
+
  			if ($taxonomy_obj->rewrite['with_front']) {
 
  				$path = $sublanguage_admin->translate_taxonomy($term->taxonomy, $language, $taxonomy_obj->rewrite['slug']).'/'.$path;

@@ -113,14 +113,19 @@ class Karma_Subevent {
 			'default'
 		);
 
-		add_meta_box(
-			'date-details',
-			'Détails',
-			$this->subevent_metabox_callback,
-			array($this->sub_type),
-			'normal',
-			'default'
-		);
+		if (isset($this->subevent_metabox_callback)) {
+
+			add_meta_box(
+				'date-details',
+				'Détails',
+				$this->subevent_metabox_callback,
+				array($this->sub_type),
+				'normal',
+				'default'
+			);
+
+		}
+
 
 	}
 
@@ -296,7 +301,8 @@ class Karma_Subevent {
 				'id' => $child_id,
 				'start_date' => get_post_meta($child_id, 'start_date', true),
 				'end_date' => get_post_meta($child_id, 'end_date', true),
-				'parent' => $child->post_parent
+				'parent' => $child->post_parent,
+				'slug' => $child->post_name
 			);
 
 			foreach ($this->fields as $field) {

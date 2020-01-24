@@ -11,13 +11,20 @@ class Karma_Files {
 	 */
 	public function write_file($path, $filename, $data) {
 
-		if (!file_exists($path)) {
+		$file = $path . '/' . $filename;
+		// if (!file_exists($path)) {
+		//
+		// 	mkdir($path, 0777, true);
+		//
+		// }
 
-			mkdir($path, 0777, true);
+		if (!file_exists(dirname($file))) {
+
+			mkdir(dirname($file), 0777, true);
 
 		}
 
-		file_put_contents($path . '/' . $filename, $data);
+		file_put_contents($file, $data);
 
 	}
 
@@ -74,5 +81,7 @@ class Karma_Files {
 		}
 
 	}
+
+	
 
 }

@@ -1,0 +1,96 @@
+table.media-box-table {
+	border-collapse: collapse;
+	border-spacing: 0;
+	width: 100%;
+	table-layout: fixed;
+	margin-bottom: 1em;
+}
+table.media-box-table tbody tr {
+}
+table.media-box-table td {
+	cursor: move;
+}
+table.media-box-table td,
+table.media-box-table th {
+	box-sizing:border-box;
+}
+table.media-box-table td.remove,
+table.media-box-table th.remove {
+	width: 55px;
+}
+table.media-box-table td.remove {
+	text-align: right;
+}
+table.media-box-table tbody tr.dragged {
+	display: table;
+	table-layout: fixed;
+	background-color: white;
+	border: 1px solid #e5e5e5;
+}
+table.media-box-table .media-box-gallery {
+	/* display: flex; */
+	overflow: hidden;
+}
+table.media-box-table img,
+table.media-box-table img {
+	height: 60px;
+  width: 60px;
+  object-fit: contain;
+}
+table.media-box-table textarea {
+	resize: none;
+	height: 61px;
+	width: 100%;
+	padding: 5px;
+	box-sizing: border-box;
+}
+table.media-box-table input.text {
+	padding: 5px;
+	box-sizing: border-box;
+	width: 100%;
+}
+.media-box-control {
+	display: flex;
+}
+.media-box-control .button {
+	margin-right: 0.5em;
+}
+.media-box-control input {
+	flex-grow: 1;
+}
+table.media-box-table .image-input {
+	display: inline-block;
+}
+table.media-box-table .image-input .media-box-image {
+	cursor: default;
+}
+table.media-box-table .image-input img {
+	/* cursor: pointer; */
+	/* float: left; */
+}
+.media-box-image .image-box {
+	cursor: pointer;
+}
+.media-box-image .image-box-content {
+	display: flex;
+}
+.media-box-image .image-box .image-name {
+	padding-left: 10px;
+}
+
+table.media-box-table .gallery-input {
+	display: inline-block;
+}
+table.media-box-table .gallery-input .media-box-gallery {
+	cursor: pointer;
+	display: flex;
+  flex-wrap: wrap;
+}
+
+table.media-box-table .multidate ul {
+	margin: 0;
+}
+table.media-box-table .multidate ul li {
+	display: flex;
+	align-items: center;
+}

@@ -27,6 +27,8 @@ Class Karma_Cache_Dependencies {
 		add_action('create_term', array($this, 'edit_term'), 10, 3);
 		add_action('pre_delete_term', array($this, 'delete_term'), 10, 2);
 
+		add_action('updated_option', array($this, 'update_option'), 10, 3);
+
 		add_action('wp_ajax_karma_cache_clear_dependencies', array($this, 'ajax_clear'));
 
 		add_action('karma_dependency_delete_target', array($this, 'delete_target'));
@@ -338,15 +340,14 @@ Class Karma_Cache_Dependencies {
 				'title' => 'Clear Dependencies',
 				'href'  => '#',
 				'meta'  => array(
-					'onclick' => 'ajaxGet('.admin_url('admin-ajax.php').',{action:"karma_cache_clear_dependencies"},console.log);event.preventDefault();'
+					// 'onclick' => 'ajaxGet('.admin_url('admin-ajax.php').',{action:"karma_cache_clear_dependencies"},console.log);event.preventDefault();'
+					'onclick' => 'KarmaTaskManager&&KarmaTaskManager.addTask("karma_cache_clear_dependencies",this);event.preventDefault()'
 				)
 			));
 
 		}
 
 	}
-
-
 
 	/**
 	 * @hook 'karma_dependency_delete_target'
@@ -361,6 +362,30 @@ Class Karma_Cache_Dependencies {
 		), array(
 			'%s'
 		));
+
+	}
+
+	/**
+	 * @hook 'updated_option'
+	 */
+	public function update_option($option, $old_value, $value) {
+		global $wpdb;
+
+		$dependency_table = $wpdb->prefix.$this->table_name;
+
+		$dependencies = $wpdb->get_results($wpdb->prepare(
+			"SELECT target, target_id, priority FROM $dependency_table
+			WHERE object = %s AND (type = %s OR type = '')
+			ORDER BY priority DESC",
+			'option',
+			$option
+		));
+
+		foreach ($dependencies as $dependency) {
+
+			do_action("karma_cache_{$dependency->target}_dependency_updated", $dependency);
+
+		}
 
 	}
 

@@ -5,6 +5,7 @@
  */
 class Karma_Clusters {
 
+	var $version = '1';
 	// var $dependencies = array();
 	var $post_types = array();
 	// var $dependency_table = 'clusters';
@@ -17,6 +18,7 @@ class Karma_Clusters {
 	 */
 	public function __construct() {
 
+		require_once get_template_directory() . '/modules/dependencies/dependencies.php';
 		require_once get_template_directory() . '/modules/clusters/multilanguage.php';
 		require_once get_template_directory() . '/modules/task-manager/task-manager.php';
 		require_once get_template_directory() . '/modules/files/files.php';
@@ -34,7 +36,10 @@ class Karma_Clusters {
 		add_filter('karma_task', array($this, 'add_task'));
 		add_action('karma_cache_cluster_dependency_updated', array($this, 'dependency_updated'));
 
-		add_action('save_post', array($this, 'save_post'), 10, 3);
+		add_action('save_post', array($this, 'save_post'), 20, 3);
+		add_action('edit_attachment', array($this, 'save_attachment'));
+		add_action('add_attachment', array($this, 'save_attachment'));
+
 		add_action('before_delete_post', array($this, 'delete_post'), 99);
 
 		if (is_admin()) {
@@ -43,7 +48,25 @@ class Karma_Clusters {
 			add_action('karma_task_notice', array($this, 'task_notice'));
 			add_action('admin_bar_menu', array($this, 'add_toolbar_button'), 999);
 
+		} else {
+
+			add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'), 10);
+
 		}
+
+	}
+
+	/**
+	 * @hook 'wp_enqueue_scripts'
+	 */
+	public function enqueue_scripts() {
+
+		wp_enqueue_script('karma-clusters', get_template_directory_uri() . '/modules/clusters/js/clusters.js', array(), $this->version, true);
+
+		wp_localize_script('karma-clusters', 'KarmaClusters', array(
+			'url' => $this->cluster_url,
+			'sufix' => apply_filters('karma_cluster_path', '')
+		));
 
 	}
 
@@ -117,6 +140,13 @@ class Karma_Clusters {
 
 		$query = new WP_Query($cluster_row->request);
 
+
+		$query = apply_filters('karma_update_cluster_query', $query, $cluster_row, $this);
+
+
+
+
+
 		if ($query->have_posts()) {
 
 			while ($query->have_posts()) {
@@ -125,7 +155,10 @@ class Karma_Clusters {
 
 				$post = $query->post;
 
+
 				if (isset($this->post_types[$post->post_type]) && is_callable($this->post_types[$post->post_type])) {
+
+
 
 					$dependency_instance = $karma_dependencies->create_instance('cluster', $cluster_row->id);
 
@@ -133,11 +166,41 @@ class Karma_Clusters {
 
 					$cluster = new stdClass();
 
-					call_user_func($this->post_types[$post->post_type], $cluster, $post, $dependency_instance, $this);
+					call_user_func($this->post_types[$post->post_type], $cluster, $post, $dependency_instance, $this, $query);
 
 					$dependency_instance->save();
 
-					$this->update_cache($cluster_row->path, $cluster);
+
+					// check name changes
+					$path = apply_filters('karma_cluster_path', (string) $post->ID, $post->post_type);
+					$path = apply_filters('karma_cluster_uri', $path, $post->post_type);
+
+					$this->files->write_file($this->cluster_path, 'log.txt', $path);
+
+
+					if ($path !== $cluster_row->path) {
+
+						$this->delete_cache($cluster_row->path);
+
+						$cluster_table = $wpdb->prefix.$this->table_name;
+
+						$wpdb->update($cluster_table, array(
+							'path' => $path,
+						), array(
+							'id' => $cluster_row->id,
+						), array(
+							'%s'
+						), array(
+							'%d'
+						));
+
+					}
+
+
+
+					$this->update_cache($path, $cluster);
+
+					// $this->update_cache($cluster_row->path, $cluster);
 
 				}
 
@@ -163,7 +226,7 @@ class Karma_Clusters {
 	 * return Cluster or null
 	 */
 	public function get_cluster($post_id, $post_type) {
-		global $wpdb, $karma;
+		global $wpdb, $karma, $karma_dependencies;
 
 		if ($karma->options->get_option('clusters_active')) {
 
@@ -175,9 +238,11 @@ class Karma_Clusters {
 
 				$cluster_table = $wpdb->prefix.$this->table_name;
 
+				$request = "p={$post_id}&post_type={$post_type}";
+
 				$cluster_row = $wpdb->get_row($wpdb->prepare(
-					"SELECT * FROM $cluster_table WHERE path = %s",
-					$path
+					"SELECT * FROM $cluster_table WHERE request = %s",
+					$request
 				));
 
 				if (!$cluster_row) {
@@ -186,7 +251,7 @@ class Karma_Clusters {
 
 					if ($post) {
 
-						$request = apply_filters('karma_cluster_request', "p=$post_id&post_type={$post_type}");
+						$request = apply_filters('karma_cluster_request', "p=$post_id&post_type={$post->post_type}");
 
 						$cluster_row = $this->create_cluster($request, $path, $post->post_type);
 
@@ -206,7 +271,7 @@ class Karma_Clusters {
 
 			return $cluster;
 
-		} else if (isset($this->post_types[$post_type]) && is_callable($this->post_types[$post_type])) {
+		} else if (isset($this->post_types[$post_type]) && is_callable($this->post_types[$post_type])) { // clusters deactivated:
 
 			$query = new WP_Query(array(
 				'p' => $post_id,
@@ -258,7 +323,10 @@ class Karma_Clusters {
 	 */
 	public function update_cache($path, $data) {
 
-		$this->files->write_file($this->cluster_path.'/'.$path, 'data.json', json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+		$base = apply_filters('karma_cluster_cache_base', '/'.$path, $path);
+		$filename = apply_filters('karma_cluster_cache_filename', 'data.json', $path);
+
+		$this->files->write_file($this->cluster_path.$base, $filename, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
 	}
 
@@ -267,7 +335,16 @@ class Karma_Clusters {
 	 */
 	public function delete_cache($path) {
 
-		$this->files->remove($this->cluster_path.'/'.$path);
+		$base = apply_filters('karma_cluster_cache_base', '/'.$path, $path);
+		$filename = apply_filters('karma_cluster_cache_filename', 'data.json', $path);
+
+		$this->files->remove($this->cluster_path.$base.'/'.$filename);
+
+		if ($base) {
+
+			$this->files->remove($this->cluster_path.$base);
+
+		}
 
 	}
 
@@ -276,11 +353,35 @@ class Karma_Clusters {
 	 */
 	public function get_cache($path) {
 
-		$data = $this->files->read_file($this->cluster_path.'/'.$path, 'data.json');
+		$base = apply_filters('karma_cluster_cache_base', '/'.$path, $path);
+		$filename = apply_filters('karma_cluster_cache_filename', 'data.json', $path);
+
+		$data = $this->files->read_file($this->cluster_path.$base, $filename);
 
 		if ($data) {
 
 			return json_decode($data);
+
+		}
+
+	}
+
+	/**
+	 * Get page link to fetch json
+	 */
+	public function get_link($cluster_id) {
+		global $wpdb, $karma;
+
+		$cluster_table = $wpdb->prefix.$this->table_name;
+
+		$cluster_row = $wpdb->get_row($wpdb->prepare(
+			"SELECT * FROM $cluster_table WHERE id = %d",
+			$cluster_id
+		));
+
+		if ($cluster_row) {
+
+			return $this->cluster_url.'/'.$cluster_row->path;
 
 		}
 
@@ -300,9 +401,11 @@ class Karma_Clusters {
 
 				$cluster_table = $wpdb->prefix.$this->table_name;
 
+				$request = "p={$post_id}&post_type={$post_type}";
+
 				$cluster_row = $wpdb->get_row($wpdb->prepare(
-					"SELECT * FROM $cluster_table WHERE path = %s",
-					$path
+					"SELECT * FROM $cluster_table WHERE request = %s",
+					$request
 				));
 
 				if (!$cluster_row) {
@@ -316,6 +419,7 @@ class Karma_Clusters {
 				$this->update_cluster($cluster_row);
 
 			}
+
 
 			return $this->cluster_url.'/'.$path.'/data.json';
 
@@ -408,22 +512,26 @@ class Karma_Clusters {
 
 		if ($karma->options->get_option('clusters_active') && isset($this->post_types[$post->post_type])) {
 
-			// $path = apply_filters('karma_cluster_path', (string) $post_id, $post->post_type);
-			$path = (string) $post_id;
+			$path = apply_filters('karma_cluster_uri', (string) $post_id, $post->post_type);
+			// $path = (string) $post_id;
+
+			$request = "p={$post_id}&post_type={$post->post_type}";
 
 			$cluster_table = $wpdb->prefix.$this->table_name;
 
 			$cluster_row = $wpdb->get_row($wpdb->prepare(
-				"SELECT * FROM $cluster_table WHERE path = %s",
-				$path
+				"SELECT * FROM $cluster_table WHERE request = %s",
+				$request
 			));
 
 			if ($cluster_row) {
 
-				$wpdb->query($wpdb->prepare(
-					"UPDATE $cluster_table SET status = 100 WHERE id = %d",
-					$cluster_row->id
-				));
+				// $wpdb->query($wpdb->prepare(
+				// 	"UPDATE $cluster_table SET status = 100 WHERE id = %d",
+				// 	$cluster_row->id
+				// ));
+
+				$this->update_cluster($cluster_row);
 
 			} else {
 
@@ -442,12 +550,24 @@ class Karma_Clusters {
 	}
 
 	/**
+	 * @hook 'edit_attachment'
+	 */
+	public function save_attachment($post_id) {
+
+		$post = get_post($post_id);
+
+		$this->save_post($post_id, $post, true);
+
+	}
+
+
+	/**
 	 * @hook 'before_delete_post'
 	 *
 	 * Must trigger after dependencies!
 	 */
 	public function delete_post($post_id) {
-		global $wpdb;
+		global $wpdb, $karma;
 
 		if ($karma->options->get_option('clusters_active')) {
 
@@ -458,9 +578,12 @@ class Karma_Clusters {
 			// 	$post_id.'%'
 			// ));
 
+			$post = get_post($post_id);
+			$request = "p={$post_id}&post_type={$post->post_type}";
+
 			$cluster_row = $wpdb->get_row($wpdb->prepare(
-				"SELECT * FROM $table WHERE path = %s",
-				(string) $post_id
+				"SELECT * FROM $table WHERE request = %s",
+				$request
 			));
 
 			if ($cluster_row) {
@@ -514,7 +637,8 @@ class Karma_Clusters {
 
 				$request = "p={$post->ID}&post_type={$post->post_type}";
 
-				$path = (string) $post->ID;
+				// $path = (string) $post->ID;
+				$path = apply_filters('karma_cluster_uri', (string) $post->ID, $post->post_type);
 
 				$cluster_row = $this->create_cluster($request, $path, $post->post_type);
 
@@ -620,8 +744,8 @@ class Karma_Clusters {
 
 			$karma->options->update_option('clusters_active', '1');
 
-			$table = $wpdb->prefix.$this->sitepage_table;
-			$num_task = $wpdb->get_var("SELECT count(id) AS num FROM $table");
+			// $table = $wpdb->prefix.$this->table_name;
+			// $num_task = $wpdb->get_var("SELECT count(id) AS num FROM $table");
 
 			$output['title'] = 'Clusters (enabled)';
 			$output['label'] = 'Deactivate Clusters';
@@ -720,13 +844,22 @@ class Karma_Clusters {
 	 */
 	public function ajax_get_cluster() {
 
-		$cluster = $this->get_cluster($_GET['id'], $_GET['post_type']);
+		if (isset($_GET['id'], $_GET['post_type'])) {
 
-		if ($cluster) {
+			$cluster = $this->get_cluster($_GET['id'], $_GET['post_type']);
 
-			echo json_encode($cluster);
+			if ($cluster) {
+
+				echo json_encode($cluster);
+
+			}
+
+		} else {
+
+			trigger_error('no id or no post_type');
 
 		}
+
 
 		exit;
 	}

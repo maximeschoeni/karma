@@ -1,0 +1,127 @@
+/* popup */
+.date-popup-container {
+	position: relative;
+}
+.karma-popup {
+	position: absolute;
+	bottom: 2px;
+	z-index: 100;
+	width: 245px;
+	height: 308px;
+	user-select: none;
+
+	box-shadow: 0 5px 15px rgba(0,0,0,.7);
+	background: #fcfcfc;
+}
+.karma-popup-header {
+	position: absolute;
+	width: 100%;
+	padding: 20px 20px;
+	box-sizing: border-box;
+	border-bottom: 1px solid #ddd;
+	height: 70px;
+}
+.karma-popup-header h1 {
+	font-size: 18px;
+	margin: 5px 0;
+}
+.karma-popup-body {
+	position: absolute;
+	position: absolute;
+	width: 100%;
+	top: 70px;
+	bottom: 70px;
+}
+.karma-column-container {
+	display: table;
+	width: 100%;
+	table-layout: fixed;
+	height: 100%;
+}
+.karma-column {
+	display: table-cell;
+	padding: 10px 20px;
+}
+.karma-column.calendar-column {
+	width: 60%;
+}
+.karma-column.detail-column {
+	background-color: #f3f3f3;
+	border-left: 1px solid #ddd;
+}
+.karma-column.detail-column input[type=text] {
+	box-sizing: border-box;
+	margin: 0;
+	width: 100%;
+}
+.karma-popup-footer {
+	position: absolute;
+	width: 100%;
+	padding: 20px 20px;
+	box-sizing: border-box;
+	border-top: 1px solid #ddd;
+	height: 70px;
+	bottom: 0;
+}
+.karma-popup-footer .button-primary {
+	float: right;
+}
+
+/* calendar */
+.karma-calendar-nav {
+	display: table;
+	width: 100%;
+	table-layout: fixed;
+}
+.karma-calendar-nav div {
+	display: table-cell;
+	text-align: center;
+	width: 20%;
+	vertical-align: middle;
+	height: 36px;
+	cursor: pointer;
+}
+.karma-calendar-nav div.karma-current-month {
+	width: 60%;
+}
+.karma-calendar-body {
+	display: table;
+	width: 100%;
+	table-layout: fixed;
+}
+.karma-calendar-body ul {
+	display: table-row;
+}
+.karma-calendar-body ul li {
+	display: table-cell;
+	width: 14.2857%; /* 1/7 */
+	text-align: center;
+	vertical-align: middle;
+	height: 32px;
+	cursor: pointer;
+	padding: 2px;
+}
+.karma-calendar-body ul li.offset {
+	cursor: default;
+}
+.karma-calendar-body ul li.offset span {
+	display: none;
+}
+.karma-calendar-arrow:hover,
+.karma-calendar-body ul li:hover,
+.karma-calendar-body ul li.today {
+	background-color: rgba(0,0,0,.04);
+}
+.karma-calendar-body ul li:active,
+.karma-calendar-body ul li.active {
+	background-color: #0085ba; /* rgba(0,0,0,.04); */
+	color: white;
+}
+.karma-calendar-body ul li:not(.active).today,
+.karma-calendar-body ul li:not(.active):hover {
+	/* background-color: rgba(0,0,0,.04); */
+}
+.karma-calendar-body ul li.current {
+	padding: 0;
+	border: 2px solid black;
+}

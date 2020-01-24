@@ -21,12 +21,12 @@ class Karma_Sublanguage {
 
 		add_filter('karma_append_language_to_path', array($this, 'append_language_to_path'), 10, 2);
 
-		add_filter('karma_cluster_path', array($this, 'append_language_to_path'), 10, 2);
-
-		add_filter('karma_html_cache_url', array($this, 'append_language_to_query'));
-		add_filter('karma_cluster_link_raw', array($this, 'append_language_to_query'));
-
-		add_filter('karma_cluster_items_to_update', array($this, 'cluster_items_to_update'));
+		// add_filter('karma_cluster_path', array($this, 'append_language_to_path'), 10, 2);
+		//
+		// add_filter('karma_html_cache_url', array($this, 'append_language_to_query'));
+		// add_filter('karma_cluster_link_raw', array($this, 'append_language_to_query'));
+		//
+		// add_filter('karma_cluster_items_to_update', array($this, 'cluster_items_to_update'));
 
 
 

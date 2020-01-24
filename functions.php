@@ -4,7 +4,7 @@
 
 class Karma {
 
-	var $version = '002';
+	var $version = '005';
 
 	/**
 	 *	Karma_Options object
@@ -94,11 +94,13 @@ class Karma {
 
 		wp_register_script('custom-event-polyfill', get_template_directory_uri() . '/js/polyfill/custom-event.min.js', array(), $this->version, true);
 		wp_register_script('promise-polyfill', get_template_directory_uri() . '/js/polyfill/promise.min.js', array(), $this->version, true);
+		// wp_register_script('scroll-polyfill', get_template_directory_uri() . '/js/polyfill/smoothscroll.min.js', array(), $this->version, true);
 
 		wp_register_script('tinyAnimate', get_template_directory_uri() . '/js/utils/TinyAnimate.js', array(), $this->version, true);
 		wp_register_script('swipe', get_template_directory_uri() . '/js/utils/swipe.js', array(), $this->version, true);
 		wp_register_script('collection', get_template_directory_uri() . '/js/utils/collection.js', array(), $this->version, true);
 		wp_register_script('media-player', get_template_directory_uri() . '/js/utils/media-player.js', array('tinyAnimate', 'collection'), $this->version, true);
+		wp_register_script('media-player-v2', get_template_directory_uri() . '/js/utils/media-player-v2.js', array('tinyAnimate', 'collection'), $this->version, true);
 		wp_register_script('build', get_template_directory_uri() . '/js/utils/build.js', array(), $this->version, true);
 		wp_register_script('ajax', get_template_directory_uri() . '/js/utils/ajax.js', array(), $this->version, true);
 		wp_register_script('marquee', get_template_directory_uri() . '/js/utils/marquee.js', array(), $this->version, true);

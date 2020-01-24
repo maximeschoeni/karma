@@ -1,0 +1,15 @@
+.image-box {
+	cursor: pointer;
+	display: flex;
+	flex-wrap: wrap;
+}
+.image-box img {
+	margin-right: 10px;
+}
+input.full-width,
+textarea.full-width {
+	width: 100%;
+	box-sizing: border-box;
+	margin-left: 0;
+	margin-right: 0;
+}

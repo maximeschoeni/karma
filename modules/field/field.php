@@ -48,11 +48,32 @@ Class Karma_Field {
 
 				foreach ($meta_keys as $meta_key) {
 
+					$type = $_REQUEST['karma_field_type'][$meta_key];
 					$name = "karma_field-$meta_key";
 
-					if (isset($_REQUEST[$name])) {
+					if ($type === 'checkbox') {
 
-						$type = $_REQUEST['karma_field_type'][$meta_key];
+						update_post_meta($post_id, $meta_key, isset($_REQUEST[$name]) ? '1' : '');
+
+					} else if ($type === 'checkboxes') {
+
+						$values = get_post_meta($post_id, $meta_key, false);
+
+						$new_values = isset($_REQUEST[$name]) && is_array($_REQUEST[$name]) ? $_REQUEST[$name] : array();
+
+						foreach (array_diff($new_values, $values) as $value) {
+
+							add_post_meta($post_id, $meta_key, $value);
+
+						}
+
+						foreach (array_diff($values, $new_values) as $value) {
+
+							delete_post_meta($post_id, $meta_key, $value);
+
+						}
+
+					} else if (isset($_REQUEST[$name])) {
 
 						$value = apply_filters('karma_field_save', $_REQUEST[$name], $post_id, $meta_key, $type);
 

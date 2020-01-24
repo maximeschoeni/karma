@@ -3,6 +3,8 @@
  * - build.js
  * - calendar.js
  */
+
+
 function createDatePopupManager(input, hiddenInput) {
   var popup;
 	var isOpen;
@@ -103,7 +105,10 @@ function createDatePopupManager(input, hiddenInput) {
   								function() {
   									this.addEventListener("mouseup", function(event) {
   										event.preventDefault();
-                      manager.hiddenInput.value = Calendar.format(day.date);
+                      manager.sqlDate = Calendar.format(day.date);
+                      if (manager.hiddenInput) {
+                        manager.hiddenInput.value = manager.sqlDate;
+                      }
                       manager.input.value = Calendar.format(day.date, manager.format);
                       if (manager.onUpdate) {
                         manager.onUpdate(day.date);
@@ -118,23 +123,15 @@ function createDatePopupManager(input, hiddenInput) {
   			);
   			container.appendChild(content);
   		}
-  		// if (input.value) {
-  		// 	calendar.date = Calendar.parse(input.value, manager.format);
-      //   manager.sqlDate = Calendar.format(calendar.date);
-      //   hiddenInput.value = manager.sqlDate;
-  		// } else
 
-
-      if (manager.hiddenInput.value) {
-        // manager.sqlDate = hiddenInput.value;
-        calendar.date = Calendar.parse(manager.hiddenInput.value);
-        // input.value = Calendar.format(calendar.date, manager.format);
-
+      if (manager.sqlDate) {
+        calendar.date = Calendar.parse(manager.sqlDate);
       }
   		manager.input.addEventListener("keyup", function() {
   			var date = Calendar.parse(this.value, manager.format);
   			if (date) {
   				calendar.date = date;
+          manager.sqlDate = Calendar.format(date);
   				calendar.update();
           if (manager.onUpdate) {
             manager.onUpdate(date);
@@ -145,24 +142,20 @@ function createDatePopupManager(input, hiddenInput) {
   		return container;
   	},
     init: function() {
-      manager.sqlDate = manager.hiddenInput.value;
-      var date = Calendar.parse(manager.hiddenInput.value);
+      if (manager.hiddenInput) {
+        manager.sqlDate = manager.hiddenInput.value;
+      }
+      var date = Calendar.parse(manager.sqlDate);
       manager.input.value = Calendar.format(date, manager.format);
-      // input.form.addEventListener("submit", function() {
-      //   var date = Calendar.matchDate(input.value, manager.format);
-      //   if (date) {
-      //     input.value = Calendar.parse(date);
+
+    	// manager.input.addEventListener("blur", function(event) {
+      //   var date = Calendar.parse(manager.input.value, manager.format);
+      //   manager.sqlDate = Calendar.format(date);
+      //   if (manager.hiddenInput) {
+      //     manager.hiddenInput.value = manager.sqlDate;
       //   }
-      // });
-    	manager.input.addEventListener("blur", function(event) {
-        // var date = Calendar.parse(this.value, manager.format);
-        // input.value = date ? Calendar.format(date, manager.format) : "";
-
-        var date = Calendar.parse(manager.input.value, manager.format);
-        manager.hiddenInput.value = Calendar.format(date);
-
-        manager.close();
-    	});
+      //   manager.close();
+    	// });
     	manager.input.addEventListener("mousedown", function() {
     		manager.open();
     	});
@@ -180,7 +173,7 @@ function createDatePopupManager(input, hiddenInput) {
     }
   };
 
-  if (manager.input && manager.hiddenInput) {
+  if (manager.input && manager.hiddenInput || manager.sqlDate) {
     manager.init();
   }
 

@@ -15,10 +15,8 @@ Class Karma_Cache {
 	 */
 	public function __construct() {
 
-		// register_activation_hook(__FILE__, array('Karma_Cache', 'activate'));
-		// register_deactivation_hook(__FILE__, array('Karma_Cache', 'deactivate'));
 
-		// $this->path = get_template_directory() . '/modules/html-cache';
+
 
 		require_once get_template_directory() . '/modules/dependencies/dependencies.php';
 		require_once get_template_directory() . '/modules/html-cache/multilanguage.php';
@@ -26,27 +24,8 @@ Class Karma_Cache {
 
 		$this->files_manager = new Karma_Files();
 
-		// require_once get_template_directory() . '/admin/class-file.php';
-		//
-		// $this->file_manager = new Karma_Content_Directory;
-		// $this->file_manager->directory = 'cache';
-
-		// add_filter('mod_rewrite_rules', array($this, 'mod_rewrite_rules'));
-
-		// add_action('karma_cache_add_post_dependency', array($this, 'add_post_dependency'));
-		// add_action('karma_cache_add_term_dependency', array($this, 'add_term_dependency'));
-		// add_action('karma_cache_add_type_dependency', array($this, 'add_type_dependency'));
-		// add_action('karma_cache_add_taxonomy_dependency', array($this, 'add_taxonomy_dependency'));
-
-		// compat
-		// add_action('karma_cache_add_dependency_id', array($this, 'add_dependency_id'), 10, 4);
-		// add_action('karma_cache_add_dependency_ids', array($this, 'add_dependency_ids'), 10, 4);
-		// add_action('karma_cache_add_dependency_type', array($this, 'add_dependency_type'), 10, 3);
-
-
 		add_action('karma_cache_html_dependency_updated', array($this, 'dependency_updated'));
 		add_filter('karma_task', array($this, 'add_task'), 11);
-		// add_filter('karma_task', array($this, 'rebuild_all_task'), 11);
 
 		add_action('save_post', array($this, 'save_post'), 10, 3);
 		add_action('before_delete_post', array($this, 'delete_post'), 10);
@@ -54,20 +33,12 @@ Class Karma_Cache {
 		add_action('create_term', array($this, 'edit_term'), 10, 3);
 		add_action('pre_delete_term', array($this, 'delete_term'), 10, 2);
 
-		// add_action('karma_cluster_create_object', array($this, 'create_object'), 10, 3);
-		// add_action('karma_cluster_update_object', array($this, 'update_object'), 10, 3);
-		// add_action('karma_cluster_delete_object', array($this, 'delete_object'), 10, 3);
-
-		// add_action('wp_ajax_karma_cache_regenerate_url', array($this, 'ajax_regenerate_url'));
-		// add_action('wp_ajax_karma_htmlcache_flush', array($this, 'ajax_flush'));
 		add_action('wp_ajax_karma_htmlcache_update', array($this, 'ajax_update'));
 		add_action('wp_ajax_karma_htmlcache_rebuild', array($this, 'ajax_rebuild'));
 		add_action('wp_ajax_karma_htmlcache_delete', array($this, 'ajax_delete'));
 		add_action('wp_ajax_karma_htmlcache_toggle', array($this, 'ajax_toggle'));
 
 		add_filter('mod_rewrite_rules', array($this, 'mod_rewrite'));
-
-
 
 		if (is_admin()) {
 
@@ -238,12 +209,12 @@ Class Karma_Cache {
 
 		add_filter('show_admin_bar','__return_false');
 
-		add_action('wp_print_scripts', array($this, 'dequeue_script'), 100);
+		// add_action('wp_print_scripts', array($this, 'dequeue_script'), 100);
 
 		$this->files = array();
 
-		add_action('wp_head', array($this, 'wp_header'));
-		add_action('wp_footer', array($this, 'wp_footer'));
+		// add_action('wp_head', array($this, 'wp_header'));
+		// add_action('wp_footer', array($this, 'wp_footer'));
 
 		ob_start(array($this, 'save_ob'));
 
@@ -254,55 +225,15 @@ Class Karma_Cache {
 	 */
 	public function save_ob($content) {
 		global $wpdb;
-		// $url = $this->get_current_query();
-
-		// $this->save_dependencies($this->sitepage);
 
 		$this->dependency_instance->save();
 
 		$file_content = apply_filters('karma_cache_html_output', $content, $this);
 
+		$file_content = "<?php if (!defined('KARMA_CACHE_ROOT')) exit; ?>".$file_content;
+
 		$this->files_manager->write_file(ABSPATH.$this->cache_directory.'/'.$this->sitepage->path, 'dependencies.json', json_encode($this->dependency_instance->dependencies, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-		$this->files_manager->write_file(ABSPATH.$this->cache_directory.'/'.$this->sitepage->path, 'index.php', $file_content);
-
-
-		//
-		// $this->files['dependencies.json'] = json_encode($this->dependencies);
-		// $this->files['index.html'] = $content;
-		//
-		// // $this->write_files();
-		//
-		// // $this->current_path = $this->get_current_cache_path();
-		//
-		//
-		// // $this->files['log.txt'] = $this->current_path;
-		//
-		//
-		//
-		// foreach ($this->files as $filename => $data) {
-		//
-		// 	// $files_manager->write($path.'/'.$filename, $data);
-		//
-		// 	$this->files_manager->write_file($this->cache_directory.'/'.$this->sitepage->path, 'data.json', $data);
-		//
-		// }
-		//
-		//
-		// $cache_directory
-		//
-		// $path = ABSPATH.'cache/'.$this->sitepage->path;
-		//
-		// if (!file_exists($path)) {
-		//
-		// 	mkdir($path, 0777, true);
-		//
-		// }
-		//
-		// foreach ($this->files as $filename => $data) {
-		//
-		// 	file_put_contents($path.'/'.$filename, $data);
-		//
-		// }
+		$this->files_manager->write_file(ABSPATH.$this->cache_directory.'/'.$this->sitepage->path, 'index.html', $file_content);
 
 		$sitepage_table = $wpdb->prefix.$this->sitepage_table;
 
@@ -319,40 +250,40 @@ Class Karma_Cache {
 		return $content;
 	}
 
-	/**
-	 * @hook wp_head
-	 */
-	public function dequeue_script() {
-		global $wp_scripts;
-
-		$this->header_scripts = $this->get_all_scripts(0);
-		$this->footer_scripts = $this->get_all_scripts(1);
-
-		foreach ($wp_scripts->queue as $script) {
-
-			wp_dequeue_script($script);
-
-		}
-
-	}
-
-	/**
-	 * @hook wp_head
-	 */
-	public function wp_header() {
-
-		$this->print_scripts($this->header_scripts, true);
-
-	}
-
-	/**
-	 * @hook wp_footer
-	 */
-	public function wp_footer() {
-
-		$this->print_scripts($this->footer_scripts, false);
-
-	}
+	// /**
+	//  * @hook wp_head
+	//  */
+	// public function dequeue_script() {
+	// 	global $wp_scripts;
+	//
+	// 	$this->header_scripts = $this->get_all_scripts(0);
+	// 	$this->footer_scripts = $this->get_all_scripts(1);
+	//
+	// 	foreach ($wp_scripts->queue as $script) {
+	//
+	// 		wp_dequeue_script($script);
+	//
+	// 	}
+	//
+	// }
+	//
+	// /**
+	//  * @hook wp_head
+	//  */
+	// public function wp_header() {
+	//
+	// 	$this->print_scripts($this->header_scripts, true);
+	//
+	// }
+	//
+	// /**
+	//  * @hook wp_footer
+	//  */
+	// public function wp_footer() {
+	//
+	// 	$this->print_scripts($this->footer_scripts, false);
+	//
+	// }
 
 
 
@@ -443,7 +374,15 @@ Class Karma_Cache {
 
 		$post_type_obj = get_post_type_object($post_type);
 
-		$path = $post_type_obj->rewrite['slug'];
+		if ($post_type_obj->rewrite) {
+
+			$path = $post_type_obj->rewrite['slug'];
+
+		} else {
+
+			$path = $post_type;
+
+		}
 
 		return apply_filters('karma_htmlcache_archive_path', $path, $post_type, $post_type_obj, $this);
 
@@ -618,15 +557,6 @@ Class Karma_Cache {
 				'%d'
 			));
 
-			// delete dependencies
-			// $dependency_table = $wpdb->prefix.$this->dependency_table;
-			//
-			// $wpdb->delete($dependency_table, array(
-			// 	'page_id' => $sitepage->id
-			// ), array(
-			// 	'%d'
-			// ));
-
 		}
 
 	}
@@ -691,30 +621,6 @@ Class Karma_Cache {
 		}
 
 		$this->files_manager->remove(ABSPATH.$this->cache_directory.'/'.$sitepage->path);
-
-		// if (file_exists($sitepage->path.'/index.html')) {
-		//
-		// 	unlink($sitepage->path.'/index.html');
-		//
-		// }
-		//
-		// if (file_exists($sitepage->path.'/script.js')) {
-		//
-		// 	unlink($sitepage->path.'/script.js');
-		//
-		// }
-		//
-		// if (file_exists($sitepage->path.'/dependencies.json')) {
-		//
-		// 	unlink($sitepage->path.'/dependencies.json');
-		//
-		// }
-		//
-		// if (file_exists($sitepage->path)) {
-		//
-		// 	unlink($sitepage->path);
-		//
-		// }
 
 	}
 
@@ -866,6 +772,16 @@ Class Karma_Cache {
 				$dependency->target_id
 			));
 
+
+			// delete cached page
+			$path = $wpdb->get_var($wpdb->prepare("SELECT path FROM $sitepage_table WHERE id = %d", $dependency->target_id));
+
+			if ($path) {
+
+				$this->files_manager->remove(ABSPATH.$this->cache_directory.'/'.$path.'/index.html');
+
+			}
+
 		}
 
 	}
@@ -894,123 +810,123 @@ Class Karma_Cache {
 
 	}
 
-	/**
-	 * print_scripts
-	 */
-	public function print_scripts($scripts, $internal = false) {
-		global $wp_scripts;
-
-		$key = implode(',', $scripts);
-		// $js_filename = md5($key) . '.js';
-		$l10n = '';
-		$js = '';
-
-		foreach ($scripts as $handle) {
-
-			if (isset($wp_scripts->registered[$handle]->extra['data'])) {
-
-				$l10n .= $wp_scripts->registered[$handle]->extra['data'] . "\n";
-
-			}
-
-		}
-
-		if ($l10n) {
-
-			echo '<script type="text/javascript">'."\n".$l10n."\n".'</script>'."\n";
-
-		}
-
-		foreach ($scripts as $handle) {
-
-			$script_src = $wp_scripts->registered[$handle]->src;
-
-			if (strpos($script_src, WP_CONTENT_URL) === 0) {
-
-				$script_file = str_replace(WP_CONTENT_URL, WP_CONTENT_DIR, $script_src);
-
-				$js .= "\n/*** $handle ***/\n" . file_get_contents($script_file) . "\n";
-
-			} else {
-
-				echo '<script type="text/javascript" src="'.$script_src.'"></script>';
-
-			}
-
-		}
-
-		if ($js) {
-
-			//require_once get_template_directory() . '/modules/html-cache/jshrink/minifier.php';
-			// $js = JShrink\Minifier::minify($js);
-
-			if ($internal) {
-
-				echo '<script type="text/javascript">'."\n".$js."\n".'</script>';
-
-			} else {
-
-				$this->files_manager->write_file(ABSPATH.$this->cache_directory.'/'.$this->sitepage->path, 'script.js', $js);
-
-				$path = get_option('home');
-
-				if ($this->sitepage->path) {
-
-					$path .= '/'.$this->sitepage->path;
-
-				}
-
-				echo '<script type="text/javascript" src="'.$path.'/script.js"></script>';
-
-			}
-
-		}
-
-	}
-
-	/**
-	 * get scripts
-	 */
-	public function get_all_scripts($in_footer) {
-		global $wp_scripts;
-
-		$deps_keys = array();
-
-		foreach ($wp_scripts->queue as $script) {
-
-			if ($in_footer == (isset($wp_scripts->registered[$script]->extra['group']) && $wp_scripts->registered[$script]->extra['group'] === 1)) {
-
-				$deps_keys = array_merge($deps_keys, $this->get_script_deps($script));
-
-			}
-
-		}
-
-		return array_keys($deps_keys);
-	}
-
-	/**
-	 * get script deps
-	 */
-	public function get_script_deps($script) {
-		global $wp_scripts;
-
-		$deps_keys = array();
-
-		if (isset($wp_scripts->registered[$script]->deps) && $wp_scripts->registered[$script]->deps) {
-
-			foreach ($wp_scripts->registered[$script]->deps as $child) {
-
-				$deps_keys = array_merge($deps_keys, $this->get_script_deps($child));
-
-			}
-
-		}
-
-		$deps_keys[$script] = true;
-
-		return $deps_keys;
-	}
+	// /**
+	//  * print_scripts
+	//  */
+	// public function print_scripts($scripts, $internal = false) {
+	// 	global $wp_scripts;
+	//
+	// 	$key = implode(',', $scripts);
+	// 	// $js_filename = md5($key) . '.js';
+	// 	$l10n = '';
+	// 	$js = '';
+	//
+	// 	foreach ($scripts as $handle) {
+	//
+	// 		if (isset($wp_scripts->registered[$handle]->extra['data'])) {
+	//
+	// 			$l10n .= $wp_scripts->registered[$handle]->extra['data'] . "\n";
+	//
+	// 		}
+	//
+	// 	}
+	//
+	// 	if ($l10n) {
+	//
+	// 		echo '<script type="text/javascript">'."\n".$l10n."\n".'</script>'."\n";
+	//
+	// 	}
+	//
+	// 	foreach ($scripts as $handle) {
+	//
+	// 		$script_src = $wp_scripts->registered[$handle]->src;
+	//
+	// 		if (strpos($script_src, WP_CONTENT_URL) === 0) {
+	//
+	// 			$script_file = str_replace(WP_CONTENT_URL, WP_CONTENT_DIR, $script_src);
+	//
+	// 			$js .= "\n/*** $handle ***/\n" . file_get_contents($script_file) . "\n";
+	//
+	// 		} else {
+	//
+	// 			echo '<script type="text/javascript" src="'.$script_src.'"></script>';
+	//
+	// 		}
+	//
+	// 	}
+	//
+	// 	if ($js) {
+	//
+	// 		//require_once get_template_directory() . '/modules/html-cache/jshrink/minifier.php';
+	// 		// $js = JShrink\Minifier::minify($js);
+	//
+	// 		if ($internal) {
+	//
+	// 			echo '<script type="text/javascript">'."\n".$js."\n".'</script>';
+	//
+	// 		} else {
+	//
+	// 			$this->files_manager->write_file(ABSPATH.$this->cache_directory.'/'.$this->sitepage->path, 'script.js', $js);
+	//
+	// 			$path = get_option('home');
+	//
+	// 			if ($this->sitepage->path) {
+	//
+	// 				$path .= '/'.$this->sitepage->path;
+	//
+	// 			}
+	//
+	// 			echo '<script type="text/javascript" src="'.$path.'/script.js"></script>';
+	//
+	// 		}
+	//
+	// 	}
+	//
+	// }
+	//
+	// /**
+	//  * get scripts
+	//  */
+	// public function get_all_scripts($in_footer) {
+	// 	global $wp_scripts;
+	//
+	// 	$deps_keys = array();
+	//
+	// 	foreach ($wp_scripts->queue as $script) {
+	//
+	// 		if ($in_footer == (isset($wp_scripts->registered[$script]->extra['group']) && $wp_scripts->registered[$script]->extra['group'] === 1)) {
+	//
+	// 			$deps_keys = array_merge($deps_keys, $this->get_script_deps($script));
+	//
+	// 		}
+	//
+	// 	}
+	//
+	// 	return array_keys($deps_keys);
+	// }
+	//
+	// /**
+	//  * get script deps
+	//  */
+	// public function get_script_deps($script) {
+	// 	global $wp_scripts;
+	//
+	// 	$deps_keys = array();
+	//
+	// 	if (isset($wp_scripts->registered[$script]->deps) && $wp_scripts->registered[$script]->deps) {
+	//
+	// 		foreach ($wp_scripts->registered[$script]->deps as $child) {
+	//
+	// 			$deps_keys = array_merge($deps_keys, $this->get_script_deps($child));
+	//
+	// 		}
+	//
+	// 	}
+	//
+	// 	$deps_keys[$script] = true;
+	//
+	// 	return $deps_keys;
+	// }
 
 	/**
 	 * is_post_type_single_cacheable
@@ -1052,13 +968,13 @@ Class Karma_Cache {
 	public function create_sitemap() {
 		global $wpdb;
 
-		$items = array();
-
 		$this->update_sitepage('', '');
 
 		do_action('karma_htmlcache_update_home_sitepage', '', '', $this);
 
 		$post_types = array_filter(get_post_types(), array($this, 'is_post_type_single_cacheable'));
+
+
 
 		if ($post_types) {
 
@@ -1073,15 +989,17 @@ Class Karma_Cache {
 
 				$url = $this->get_post_query($post);
 				$path = $this->get_post_cache_path($post);
+				$parent_url = '';
 
 				if ($post->post_parent) {
 
 					$parent_post = get_post($post->post_parent);
-					$parent_url = $this->get_post_query($parent_post);
 
-				} else {
+					if ($parent_post) {
 
-					$parent_url = '';
+						$parent_url = $this->get_post_query($parent_post);
+
+					}
 
 				}
 
@@ -1116,7 +1034,7 @@ Class Karma_Cache {
 
 			$taxonomies_sql = implode("','", array_map('esc_sql', $taxonomies));
 
-			$terms = $wpdb->get_results("SELECT tt.taxonomy, t.slug FROM $wpdb->term_taxonomy AS tt
+			$terms = $wpdb->get_results("SELECT tt.taxonomy, t.term_id, t.slug FROM $wpdb->term_taxonomy AS tt
 				JOIN $wpdb->terms AS t ON (t.term_id = tt.term_id)
 				WHERE tt.taxonomy IN ('$taxonomies_sql')");
 
@@ -1133,7 +1051,6 @@ Class Karma_Cache {
 
 		}
 
-		return $items;
 	}
 
 
@@ -1274,7 +1191,7 @@ Class Karma_Cache {
 
 		$output = array();
 
-		$this->delete_html_cache();
+		// $this->delete_html_cache();
 
 		if ($karma->options->get_option('html_cache')) {
 
@@ -1289,16 +1206,16 @@ Class Karma_Cache {
 
 		} else {
 
-			$this->create_sitemap();
-
-			$table = $wpdb->prefix.$this->sitepage_table;
-			$num_task = $wpdb->get_var("SELECT count(id) AS num FROM $table");
+			// $this->create_sitemap();
+			//
+			// $table = $wpdb->prefix.$this->sitepage_table;
+			// $num_task = $wpdb->get_var("SELECT count(id) AS num FROM $table");
 
 			$karma->options->update_option('html_cache', 1);
 
 			$output['title'] = 'HTML Cache (enabled)';
 			$output['label'] = 'Deactivate HTML Cache';
-			$output['notice'] = "Activating HTML Cache. Building $num_task Pages. ";
+			$output['notice'] = "Activating HTML Cache.";
 			$output['action'] = 'rebuild html cache';
 
 			copy(get_template_directory().'/modules/html-cache/include/cache.php', ABSPATH.'cache.php');
@@ -1450,14 +1367,14 @@ Class Karma_Cache {
 			$rules = "<IfModule mod_rewrite.c>
 RewriteEngine On
 RewriteBase {$home_root}
-RewriteRule ^index\.php$ - [L]
 RewriteRule ^cache\.php.*$ - [L]
-RewriteRule ^{$this->cache_directory}/.*$ - [L]
+RewriteRule ^index\.php$ - [L]
+RewriteRule ^{$this->cache_directory}/(.*)$ cache.php?d={$this->cache_directory}/$1 [L]
+RewriteRule ^{$this->cache_directory}/?$ cache.php?d={$this->cache_directory} [L]
+RewriteRule ^$ cache.php?d={$this->cache_directory} [L]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ cache.php?d={$this->cache_directory}/$1
-RewriteRule ^$ cache.php?d={$this->cache_directory}
-
+RewriteRule ^(.*)$ cache.php?d={$this->cache_directory}/$1 [L]
 </IfModule>";
 
 //RewriteRule ^(.*)$ {$home_root}{$this->cache_directory}/$1

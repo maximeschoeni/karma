@@ -11,6 +11,9 @@
   <?php if (isset($args['class'])) { ?>
     class="<?php echo $args['class']; ?>"
   <?php } ?>
+  <?php if (isset($args['style'])) { ?>
+    style="<?php echo $args['style']; ?>"
+  <?php } ?>
   <?php if (isset($args['id'])) { ?>
     id="<?php echo $args['id']; ?>"
   <?php } ?>
